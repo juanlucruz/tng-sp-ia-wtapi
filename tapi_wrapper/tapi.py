@@ -208,7 +208,7 @@ class TapiWrapper(object):
         LOG.error("Network Service " + service_instance_id + ": error occured: " + error)
 
         message = {
-            'status': 'failed',
+            'request_status': 'FAILED',
             'error': error,
             'timestamp': time.time()
         }
@@ -344,13 +344,13 @@ class TapiWrapper(object):
 
             response = {
                 'error': error,
-                'status': 'ERROR'
+                'request_status': 'ERROR'
             }
             msg = ' Response on create request: ' + str(response)
             LOG.info('Service ' + str(service_instance_id) + msg)
             self.manoconn.notify(topics.WAN_CONFIGURE,
                                  yaml.dump(response),
-                                 correlation_id=corr_id)
+                                 correlation_id=properties.correlation_id)
 
         # Don't trigger on self created messages
         if self.name == properties.app_id:
@@ -361,8 +361,7 @@ class TapiWrapper(object):
         message = yaml.load(payload)
 
         # Check if payload and properties are ok
-        corr_id = properties.correlation_id
-        if corr_id is None:
+        if properties.correlation_id is None:
             error = 'No correlation id provided in header of request'
             send_error_response(error, None)
             return
@@ -392,7 +391,7 @@ class TapiWrapper(object):
             'status': 'INIT',
             'kill_service': False,
             'schedule': [],
-            'orig_corr_id': corr_id,
+            'orig_corr_id': properties.correlation_id,
             'topic': properties.reply_to,
             'error': None,
             'message': None
@@ -417,13 +416,13 @@ class TapiWrapper(object):
 
             response = {
                 'error': error,
-                'status': 'ERROR'
+                'request_status': 'ERROR'
             }
             msg = ' Response on remove request: ' + str(response)
             LOG.info('Service ' + str(service_instance_id) + msg)
             self.manoconn.notify(topics.WAN_DECONFIGURE,
                                  yaml.dump(response),
-                                 correlation_id=corr_id)
+                                 correlation_id=properties.correlation_id)
 
         # Don't trigger on self created messages
         if self.name == properties.app_id:
@@ -435,8 +434,7 @@ class TapiWrapper(object):
         message = yaml.load(payload)
 
         # Check if payload and properties are ok.
-        corr_id = properties.correlation_id
-        if corr_id is None:
+        if properties.correlation_id is None:
             error = 'No correlation id provided in header of request'
             send_error_response(error, None)
             return
@@ -456,6 +454,8 @@ class TapiWrapper(object):
         ]
 
         self.wtapi_ledger[service_instance_id]['schedule'].extend(add_schedule)
+        self.wtapi_ledger[service_instance_id]['topic'] = properties.reply_to
+        self.wtapi_ledger[service_instance_id]['orig_corr_id'] = properties.correlation_id
 
         msg = "Network service remove request received."
         LOG.info("Network Service {}: {}".format(service_instance_id, msg))
@@ -497,9 +497,9 @@ class TapiWrapper(object):
         }
 
         if self.wtapi_ledger[service_instance_id]['error'] is None:
-            message["status"] = "COMPLETED"
+            message["request_status"] = "COMPLETED"
         else:
-            message["status"] = "FAILED"
+            message["request_status"] = "FAILED"
 
         if self.wtapi_ledger[service_instance_id]['message'] is not None:
             message["message"] = self.wtapi_ledger[service_instance_id]['message']
