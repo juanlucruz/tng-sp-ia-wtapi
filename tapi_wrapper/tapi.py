@@ -237,9 +237,10 @@ class TapiWrapper(object):
             wim_uuid = self.wtapi_ledger[service_instance_id]['wim']['uuid']
             query = f"INSERT INTO service_instances (instance_uuid, wim_uuid) VALUES " \
                     f"('{service_instance_id}', '{wim_uuid}');"
+            LOG.debug(f'query: {query}')
             cursor.execute(query)
             resp = cursor.fetchall()
-            LOG.debug(resp)
+            LOG.debug(f'resp: {resp}')
             return {'result': True, 'message': f'wimregistry row created for {service_instance_id}'}
         except (Exception, psycopg2.Error) as error:
             LOG.error(error)
@@ -258,7 +259,7 @@ class TapiWrapper(object):
                                           port="5432",
                                           database="wimregistry")
             cursor = connection.cursor()
-            query = f"DELETE FROM service_instances WHERE instance_uuid ='{service_instance_id}';"
+            query = f"DELETE FROM service_instances WHERE instance_uuid = '{service_instance_id}';"
             cursor.execute(query)
             resp = cursor.fetchall()
             LOG.debug(resp)
