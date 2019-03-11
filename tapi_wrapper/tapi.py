@@ -234,7 +234,7 @@ class TapiWrapper(object):
                                           port="5432",
                                           database="wimregistry")
             cursor = connection.cursor()
-            wim_uuid = self.wtapi_ledger[service_instance_id]['wim_uuid']
+            wim_uuid = self.wtapi_ledger[service_instance_id]['wim']['uuid']
             query = f"INSERT INTO service_instances (instance_uuid, wim_uuid) VALUES " \
                     f"('{service_instance_id}', '{wim_uuid}');"
             cursor.execute(query)
@@ -243,7 +243,7 @@ class TapiWrapper(object):
             return {'result': True, 'message': f'wimregistry row created for {service_instance_id}'}
         except (Exception, psycopg2.Error) as error:
             exception_message = str(error)
-            return {'result': False, 'message': f'error inserting {service_instance_id}', 'error': exception_message}
+            return {'result': False, 'message': f'error inserting {service_instance_id}', 'error': error}
         finally:
             # closing database connection.
             if connection:
