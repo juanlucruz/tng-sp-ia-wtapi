@@ -264,7 +264,7 @@ class TapiWrapperEngine(object):
                 raise ConnectionError({'msg': response.text, 'code': response.status_code})
 
     def get_sip_by_name(self, wim, name):
-        tapi_sip_url = 'http://{ip}:{port}/restconf/config/context/service-interface-point/'.format(wim)
+        tapi_sip_url = 'http://{}:{}/restconf/config/context/service-interface-point/'.format(wim['ip'], wim['port'])
         sip_list = requests.get(tapi_sip_url).json()
         return list(filter(lambda x: x['name']['value-name'] == name, sip_list))[0]
 
