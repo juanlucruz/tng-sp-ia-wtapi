@@ -294,7 +294,7 @@ class TapiWrapper(object):
                                           port="5432",
                                           database="wimregistry")
             cursor = connection.cursor()
-            vim_uuid = self.wtapi_ledger[service_instance_id]['vim_list'][0]
+            vim_uuid = self.wtapi_ledger[service_instance_id]['vim_list'][0]['uuid']
             query_wim = f"SELECT (wim_uuid) FROM attached_vim WHERE vim_uuid = '{vim_uuid}';"
             cursor.execute(query_wim)
             resp = cursor.fetchall()
@@ -313,6 +313,7 @@ class TapiWrapper(object):
             }
             return {'result': True, 'message': f'wimregistry deleted for {service_instance_id}'}
         except (Exception, psycopg2.Error) as error:
+            LOG.error(error)
             exception_message = str(error)
             return {'result': False, 'message': f'error deleting {service_instance_id}', 'error': exception_message}
         finally:
