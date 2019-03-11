@@ -242,7 +242,7 @@ class TapiWrapper(object):
             LOG.debug(resp)
             return {'result': True, 'message': f'wimregistry row created for {service_instance_id}'}
         except (Exception, psycopg2.Error) as error:
-            exception_message = str(error)
+            LOG.error(error)
             return {'result': False, 'message': f'error inserting {service_instance_id}', 'error': error}
         finally:
             # closing database connection.
@@ -264,8 +264,8 @@ class TapiWrapper(object):
             LOG.debug(resp)
             return {'result': True, 'message': f'wimregistry deleted for {service_instance_id}'}
         except (Exception, psycopg2.Error) as error:
-            exception_message = str(error)
-            return {'result': False, 'message': f'error deleting {service_instance_id}', 'error': exception_message}
+            LOG.error(error)
+            return {'result': False, 'message': f'error deleting {service_instance_id}', 'error': error}
         finally:
             # closing database connection.
             if connection:
@@ -314,8 +314,7 @@ class TapiWrapper(object):
             return {'result': True, 'message': f'got wim {wim_uuid} for {service_instance_id}'}
         except (Exception, psycopg2.Error) as error:
             LOG.error(error)
-            exception_message = str(error)
-            return {'result': False, 'message': f'error deleting {service_instance_id}', 'error': exception_message}
+            return {'result': False, 'message': f'error deleting {service_instance_id}', 'error': error}
         finally:
             # closing database connection.
             if connection:
