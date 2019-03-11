@@ -465,8 +465,10 @@ class TapiWrapper(object):
         #     send_error_response(error, None)
         #     return
         expected_keys = {'service_instance_id', 'nap', 'vim_list',}
+        # expected_keys = {'service_instance_id', 'nap', 'vim_list', 'qos_parameters'}
         if all(key in message.keys() for key in expected_keys):
             error = f'Payload should contain {expected_keys}'
+            LOG.error(message.keys())
             send_error_response(error, None)
             return
 
