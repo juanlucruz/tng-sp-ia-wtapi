@@ -460,8 +460,12 @@ class TapiWrapper(object):
             error = 'Payload is not a dictionary'
             send_error_response(error, None)
             return
-        if all({'service_instance_id', 'nap', 'vim_list', 'qos_parameters'}) not in message.keys():
-            error = 'Payload should contain "service_instance_id", "wim_uuid", "nap", "vim_list", "qos_parameters"'
+        # if all({'service_instance_id', 'nap', 'vim_list', 'qos_parameters'}) not in message.keys():
+        #     error = 'Payload should contain "service_instance_id", "wim_uuid", "nap", "vim_list", "qos_parameters"'
+        #     send_error_response(error, None)
+        #     return
+        if all({'service_instance_id', 'nap', 'vim_list',}) not in message.keys():
+            error = 'Payload should contain "service_instance_id", "nap", "vim_list"'
             send_error_response(error, None)
             return
 
@@ -525,11 +529,22 @@ class TapiWrapper(object):
         # Don't trigger on self created messages
         if self.name == properties.app_id:
             return
-
         LOG.info("WAN deconfigure request received.")
         LOG.debug('Parameters:channel:{},method:{},properties:{},payload:{}'.format(ch, method, properties, payload))
-
         message = yaml.load(payload)
+
+        if not isinstance(message, dict):
+            error = 'Payload is not a dictionary'
+            send_error_response(error, None)
+            return
+        if 'service_instance_id' not in message.keys():
+            error = 'Payload should contain "service_instance_id"'
+            send_error_response(error, None)
+            return
+
+
+
+
 
         # Check if payload and properties are ok.
         if properties.correlation_id is None:
