@@ -101,7 +101,7 @@ class TapiWrapper(object):
         while True:
             try:
                 self.manoconn = messaging.ManoBrokerRequestResponseConnection(self.name)
-                LOG.debug("Wrapper is connected to broker.")
+                LOG.debug("Tapi plugin connected to broker.")
                 # NOTE: Is not yet connected since previous func is running in parallel, connection takes about 200 ms
                 break
             except:
@@ -111,7 +111,7 @@ class TapiWrapper(object):
         self.declare_subscriptions()
 
         if start_running:
-            LOG.info("Wrapper running...")
+            LOG.info("Tapi plugin running...")
             self.run()
 
     def run(self):
@@ -152,6 +152,14 @@ class TapiWrapper(object):
 
     def get_services(self):
         return self.wtapi_ledger
+
+    def get_capabilities(self, service_instance_id):
+        link_pairs = self.wtapi_ledger[service_instance_id]['link_pairs']
+        for link_pair in link_pairs:
+            # Get NePs and PoPs from DB, correlate with WIM SIP DB and give capabilities per link
+            # Insert capabilities to ledger
+            pass
+        return # {'result': True, 'message': f'wimregistry row created for {service_instance_id}'}
 
     def start_next_task(self, service_instance_id):
         """
@@ -396,7 +404,7 @@ class TapiWrapper(object):
         #             data = future.result()
         #         except Exception as exc:
         #             LOG.error('{} generated an exception: {}'.format(call_id, exc))
-        return {'result': True, 'calls_created': [cs['uuid'] for cs in connectivity_services]}
+        return {'result': True, 'message': [cs['uuid'] for cs in connectivity_services]}
 
     def virtual_links_remove(self, service_instance_id):
         """
@@ -413,6 +421,7 @@ class TapiWrapper(object):
         else:
             LOG.warning('Requested virtual_links_remove for {} but there are no active connections'.format(
                 service_instance_id))
+        return {'result': True, 'message': [cs['uuid'] for cs in connectivity_services]}
 
     def wan_network_configure(self, ch, method, properties, payload):
         """
