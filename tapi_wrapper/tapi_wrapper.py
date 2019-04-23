@@ -157,7 +157,7 @@ class TapiWrapperEngine(object):
                     'link-layer-type': "2048"
                 }
             }
-        elif layer == 'arp':
+        elif layer == 'ARP':
             connectivity_service = {
                 "uuid": str(self.index),
                 "end-point": [
@@ -190,7 +190,7 @@ class TapiWrapperEngine(object):
                     'link-layer-type': "2054"
                 }
             }
-        elif layer == 'mpls_arp' and direction == 'UNIDIRECTIONAL':
+        elif layer == 'MPLS_ARP' and direction == 'UNIDIRECTIONAL':
             connectivity_service = {
                 "uuid": str(self.index),
                 "end-point": [
@@ -228,15 +228,14 @@ class TapiWrapperEngine(object):
         self.index += 1
         return connectivity_service
 
-    def create_connectivity_service(self, wim, cs):
+    def create_connectivity_service(self, wim_host, cs):
         """
         Call this function per virtual link
         :param cs:
         :return:
         """
         LOG.debug('TapiWrapper: Creating connectivity service {}'.format(cs['uuid']))
-        tapi_cs_url = 'http://{}:{}/restconf/config/context/connectivity-service/{}/'.format(
-            wim['ip'], wim['port'], cs['uuid'])
+        tapi_cs_url = f'http://{wim_host}/restconf/config/context/connectivity-service/{cs["uuid"]}/'
         headers = {'Content-type': 'application/json'}
         try:
             response = requests.post(tapi_cs_url, json=cs, headers=headers)
@@ -248,10 +247,9 @@ class TapiWrapperEngine(object):
             else:
                 raise ConnectionError({'msg': response.text, 'code': response.status_code})
 
-    def remove_connectivity_service(self, wim, uuid):
+    def remove_connectivity_service(self, wim_host, uuid):
         LOG.debug('TapiWrapper: Removing connectivity service {}'.format(uuid))
-        tapi_cs_url = 'http://{}:{}/restconf/config/context/connectivity-service/{}/'.format(
-            wim['ip'], wim['port'], uuid)
+        tapi_cs_url = f'http://{wim_host}/restconf/config/context/connectivity-service/{cs["uuid"]}/'
         headers = {'Accept': 'application/json'}
         try:
             response = requests.delete(tapi_cs_url, headers=headers)
@@ -263,8 +261,8 @@ class TapiWrapperEngine(object):
             else:
                 raise ConnectionError({'msg': response.text, 'code': response.status_code})
 
-    def get_sip_by_name(self, wim, name):
-        tapi_sip_url = 'http://{}:{}/restconf/config/context/service-interface-point/'.format(wim['ip'], wim['port'])
+    def get_sip_by_name(self, wim_host, name):
+        tapi_sip_url = f'http://{wim_host}/restconf/config/context/service-interface-point/'
         sip_list = requests.get(tapi_sip_url).json()
         return list(filter(lambda x: x['name']['value-name'] == name, sip_list))[0]
 
