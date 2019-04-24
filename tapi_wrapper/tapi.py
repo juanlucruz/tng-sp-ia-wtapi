@@ -155,46 +155,46 @@ class TapiWrapper(object):
     def get_services(self):
         return self.wtapi_ledger
 
-    def get_capabilities(self, virtual_link_id):
-        link_pairs = self.wtapi_ledger[virtual_link_id]['link_pairs']
+    def get_capabilities(self, virtual_link_uuid):
+        link_pairs = self.wtapi_ledger[virtual_link_uuid]['link_pairs']
         for link_pair in link_pairs:
             # Get NePs and PoPs from DB, correlate with WIM SIP DB and give capabilities per link
             # Insert capabilities to ledger
             pass
-        return # {'result': True, 'message': f'wimregistry row created for {virtual_link_id}'}
+        return # {'result': True, 'message': f'wimregistry row created for {virtual_link_uuid}'}
 
-    def start_next_task(self, virtual_link_id):
+    def start_next_task(self, virtual_link_uuid):
         """
         This method makes sure that the next task in the schedule is started
         when a task is finished, or when the first task should begin.
         :param func_id: the inst uuid of the function that is being handled.
         :param first: indicates whether this is the first task in a chain.
         """
-        ns_uuid = self.wtapi_ledger[virtual_link_id]['ns_uuid']
+        ns_uuid = self.wtapi_ledger[virtual_link_uuid]['service_uuid']
         try:
             # If the kill field is active, the chain is killed
-            if self.wtapi_ledger[virtual_link_id]['kill_service']:
+            if self.wtapi_ledger[virtual_link_uuid]['kill_service']:
                 # FIXME
-                self.wtapi_ledger[virtual_link_id]['status'] = 'KILLING'
+                self.wtapi_ledger[virtual_link_uuid]['status'] = 'KILLING'
 
                 LOG.info(f"Network Service #{ns_uuid}: Killing running workflow")
                 # TODO: delete records, stop (destroy namespace)
                 # TODO: Or, jump into the kill workflow.
-                del self.wtapi_ledger[virtual_link_id]
+                del self.wtapi_ledger[virtual_link_uuid]
                 return
 
             # Select the next task, only if task list is not empty
-            if len(self.wtapi_ledger[virtual_link_id]['schedule']) > 0:
-                scheduled = self.wtapi_ledger[virtual_link_id]['schedule'].pop(0)
-                LOG.debug('Network Service {}: Running {}'.format(virtual_link_id, scheduled))
+            if len(self.wtapi_ledger[virtual_link_uuid]['schedule']) > 0:
+                scheduled = self.wtapi_ledger[virtual_link_uuid]['schedule'].pop(0)
+                LOG.debug('Network Service {}: Running {}'.format(virtual_link_uuid, scheduled))
                 # share state with other WTAPI Wrappers (pop)
                 next_task = getattr(self, scheduled)
 
                 # Push the next task to the thread_pool
                 # task = self.thread_pool.submit(next_task, (cs_id,))
 
-                result = next_task(virtual_link_id)
-                LOG.debug(f'Virtual link #{virtual_link_id} of Network Service #{ns_uuid}: '
+                result = next_task(virtual_link_uuid)
+                LOG.debug(f'Virtual link #{virtual_link_uuid} of Network Service #{ns_uuid}: '
                           f'Task finished, result: {result}')
 
                 # Log if a task fails
@@ -202,36 +202,36 @@ class TapiWrapper(object):
                 #     LOG.debug(task.result())
                 #
                 # else:
-                self.start_next_task(virtual_link_id)
+                self.start_next_task(virtual_link_uuid)
             else:
                 # del self.wtapi_ledger[cs_id]
-                LOG.info(f"Virtual link #{virtual_link_id} of Network Service #{ns_uuid}: Schedule finished")
-                return virtual_link_id
+                LOG.info(f"Virtual link #{virtual_link_uuid} of Network Service #{ns_uuid}: Schedule finished")
+                return virtual_link_uuid
         except Exception as e:
-            self.wtapi_ledger[virtual_link_id]['schedule'] = []
-            self.tapi_error(virtual_link_id, e)
+            self.wtapi_ledger[virtual_link_uuid]['schedule'] = []
+            self.tapi_error(virtual_link_uuid, e)
 
 
 #############################
 # TAPI Wrapper input - output
 #############################
 
-    def tapi_error(self, virtual_link_id, error=None):
+    def tapi_error(self, virtual_link_uuid, error=None):
         """
         This method is used to report back errors to the FLM
         """
         if error is None:
-            ns_uuid = self.wtapi_ledger[virtual_link_id]["ns_uuid"]
-            error = self.wtapi_ledger[virtual_link_id]['error']
-        LOG.error(f'Virtual link #{virtual_link_id} of Network Service #{ns_uuid}: error occured: {error}')
+            ns_uuid = self.wtapi_ledger[virtual_link_uuid]["service_uuid"]
+            error = self.wtapi_ledger[virtual_link_uuid]['error']
+        LOG.error(f'Virtual link #{virtual_link_uuid} of Network Service #{ns_uuid}: error occured: {error}')
 
         message = {
             'request_status': 'FAILED',
             'error': error,
             'timestamp': time.time()
         }
-        corr_id = self.wtapi_ledger[virtual_link_id]['orig_corr_id']
-        topic = self.wtapi_ledger[virtual_link_id]['topic']
+        corr_id = self.wtapi_ledger[virtual_link_uuid]['orig_corr_id']
+        topic = self.wtapi_ledger[virtual_link_uuid]['topic']
 
         self.manoconn.notify(topic,
                              yaml.dump(message),
@@ -241,7 +241,7 @@ class TapiWrapper(object):
     # Callbacks
     #############################
 
-    def insert_reference_database(self, virtual_link_id):
+    def insert_reference_database(self, virtual_link_uuid):
         # Insert created link into wimregistry
         connection = None
         cursor = None
@@ -252,17 +252,17 @@ class TapiWrapper(object):
                                           port="5432",
                                           database="wimregistry")
             cursor = connection.cursor()
-            wim_uuid = self.wtapi_ledger[virtual_link_id]['wim']['uuid']
+            wim_uuid = self.wtapi_ledger[virtual_link_uuid]['wim']['uuid']
 
             query = f"INSERT INTO service_instances (instance_uuid, wim_uuid) VALUES " \
-                    f"('{virtual_link_id}', '{wim_uuid}');"
+                    f"('{virtual_link_uuid}', '{wim_uuid}');"
             LOG.debug(f'query: {query}')
             cursor.execute(query)
             connection.commit()
-            return {'result': True, 'message': f'wimregistry row created for {virtual_link_id}'}
+            return {'result': True, 'message': f'wimregistry row created for {virtual_link_uuid}'}
         except (Exception, psycopg2.Error) as error:
             LOG.error(error)
-            return {'result': False, 'message': f'error inserting {virtual_link_id}', 'error': error}
+            return {'result': False, 'message': f'error inserting {virtual_link_uuid}', 'error': error}
         finally:
             # closing database connection.
             if cursor:
@@ -270,12 +270,12 @@ class TapiWrapper(object):
             if connection:
                 connection.close()
 
-    def delete_reference_database(self, virtual_link_id):
+    def delete_reference_database(self, virtual_link_uuid):
         # Delete created link from wimregistry
         connection = None
         cursor = None
-        virtual_link_ids = [virtual_link_id]
-        virtual_link_ids.extend(self.wtapi_ledger[virtual_link_id]['related_vls'])
+        virtual_link_ids = [virtual_link_uuid]
+        virtual_link_ids.extend(self.wtapi_ledger[virtual_link_uuid]['related_vls'])
 
         try:
             connection = psycopg2.connect(user=self.psql_user,
@@ -298,19 +298,19 @@ class TapiWrapper(object):
             if connection:
                 connection.close()
 
-    def clean_ledger(self, virtual_link_id):
-        LOG.debug('Cleaning context of {}'.format(virtual_link_id))
-        if self.wtapi_ledger[virtual_link_id]['schedule']:
+    def clean_ledger(self, virtual_link_uuid):
+        LOG.debug('Cleaning context of {}'.format(virtual_link_uuid))
+        if self.wtapi_ledger[virtual_link_uuid]['schedule']:
             raise ValueError('Schedule not empty')
-        elif self.wtapi_ledger[virtual_link_id]['active_connectivity_services']:
+        elif self.wtapi_ledger[virtual_link_uuid]['active_connectivity_services']:
             raise ValueError('There are still active connectivity services')
         else:
-            del self.wtapi_ledger[virtual_link_id]
+            del self.wtapi_ledger[virtual_link_uuid]
 
-    def get_wim_info(self, virtual_link_id):
+    def get_wim_info(self, virtual_link_uuid):
         """
                 This function retrieves endpoint and name for selected wim
-                :param virtual_link_id:
+                :param virtual_link_uuid:
                 :return:
         """
         connection = None
@@ -322,7 +322,7 @@ class TapiWrapper(object):
                                           port="5432",
                                           database="wimregistry")
             cursor = connection.cursor()
-            wim_uuid = self.wtapi_ledger[virtual_link_id]['wim']['uuid']
+            wim_uuid = self.wtapi_ledger[virtual_link_uuid]['wim']['uuid']
             query_wim = f"SELECT (name, endpoint) FROM wim WHERE uuid = '{wim_uuid}';"
             cursor.execute(query_wim)
             resp = cursor.fetchall()
@@ -330,9 +330,9 @@ class TapiWrapper(object):
             # TODO Check resp len || multiple wims for a vim?
             wim_name = resp[0][0]
             wim_endpoint = resp[0][1]
-            self.wtapi_ledger[virtual_link_id]['wim']['host'] = f'{wim_endpoint}:8182'
-            self.wtapi_ledger[virtual_link_id]['wim']['name'] = wim_name
-            return {'result': True, 'message': f'got wim {wim_name} for {virtual_link_id}'}
+            self.wtapi_ledger[virtual_link_uuid]['wim']['host'] = f'{wim_endpoint}:8182'
+            self.wtapi_ledger[virtual_link_uuid]['wim']['name'] = wim_name
+            return {'result': True, 'message': f'got wim {wim_name} for {virtual_link_uuid}'}
         except (Exception, psycopg2.Error) as error:
             LOG.error(error)
             return {'result': False, 'message': f'error getting {wim_uuid}', 'error': error}
@@ -344,15 +344,15 @@ class TapiWrapper(object):
                 connection.close()
 
 
-    def get_endpoints_info(self, virtual_link_id):
+    def get_endpoints_info(self, virtual_link_uuid):
         """
         This function retrieves info from endpoints (egress and ingress) attached in the MANO request
-        :param virtual_link_id:
+        :param virtual_link_uuid:
         :return:
         """
-        LOG.debug(f'Network Service {virtual_link_id}: get_endpoints_info')
-        ingress_endpoint_uuid = self.wtapi_ledger[virtual_link_id]['ingress']['location']
-        egress_endpoint_uuid = self.wtapi_ledger[virtual_link_id]['egress']['location']
+        LOG.debug(f'Network Service {virtual_link_uuid}: get_endpoints_info')
+        ingress_endpoint_uuid = self.wtapi_ledger[virtual_link_uuid]['ingress']['location']
+        egress_endpoint_uuid = self.wtapi_ledger[virtual_link_uuid]['egress']['location']
         connection = None
         cursor = None
         try:
@@ -382,13 +382,13 @@ class TapiWrapper(object):
                 raise Exception('Ingress endpoint not found in DB')
             elif not egress_name:
                 raise Exception('Egress endpoint not found in DB')
-            self.wtapi_ledger[virtual_link_id]['ingress']['name'] = ingress_name
-            self.wtapi_ledger[virtual_link_id]['ingress']['type'] = ingress_type
-            self.wtapi_ledger[virtual_link_id]['egress']['name'] = egress_name
-            self.wtapi_ledger[virtual_link_id]['egress']['type'] = egress_type
+            self.wtapi_ledger[virtual_link_uuid]['ingress']['name'] = ingress_name
+            self.wtapi_ledger[virtual_link_uuid]['ingress']['type'] = ingress_type
+            self.wtapi_ledger[virtual_link_uuid]['egress']['name'] = egress_name
+            self.wtapi_ledger[virtual_link_uuid]['egress']['type'] = egress_type
             return {
                 'result': True,
-                'message': f'got ingress {ingress_name} and egress {egress_name} for {virtual_link_id}',
+                'message': f'got ingress {ingress_name} and egress {egress_name} for {virtual_link_uuid}',
                 'error': None
             }
         except (Exception, psycopg2.Error) as error:
@@ -405,53 +405,53 @@ class TapiWrapper(object):
             if connection:
                 connection.close()
         # FIXME raise error when no vims (result:False)
-        # self.wtapi_ledger[virtual_link_id]['vim_name'] = list(
+        # self.wtapi_ledger[virtual_link_uuid]['vim_name'] = list(
         #     filter(lambda x: x['uuid'] == vim_uuid, self.vim_map)
         # )[0]['location']
         #
-        # return {'result':True, 'vim_name': self.wtapi_ledger[virtual_link_id]['vim_name']}
+        # return {'result':True, 'vim_name': self.wtapi_ledger[virtual_link_uuid]['vim_name']}
 
-    def match_endpoints_with_sips(self, virtual_link_id):
+    def match_endpoints_with_sips(self, virtual_link_uuid):
         """
         Match each endpoint with it's corresponding sip
-        :param virtual_link_id:
+        :param virtual_link_uuid:
         :return:
         """
-        wim_host = self.wtapi_ledger[virtual_link_id]['wim']['host']
-        ingress_name = self.wtapi_ledger[virtual_link_id]['ingress']['name']
-        egress_name = self.wtapi_ledger[virtual_link_id]['egress']['name']
+        wim_host = self.wtapi_ledger[virtual_link_uuid]['wim']['host']
+        ingress_name = self.wtapi_ledger[virtual_link_uuid]['ingress']['name']
+        egress_name = self.wtapi_ledger[virtual_link_uuid]['egress']['name']
         ingress_sip = self.engine.get_sip_by_name(wim_host, ingress_name)
         egress_sip = self.engine.get_sip_by_name(wim_host, egress_name)
-        self.wtapi_ledger[virtual_link_id]['ingress']['sip'] = ingress_sip['name']  # value-name and value
-        self.wtapi_ledger[virtual_link_id]['egress']['sip'] = egress_sip['name']
+        self.wtapi_ledger[virtual_link_uuid]['ingress']['sip'] = ingress_sip['name']  # value-name and value
+        self.wtapi_ledger[virtual_link_uuid]['egress']['sip'] = egress_sip['name']
         return {
             'result': True,
-            'message': f'got ingress {ingress_name} and egress {egress_name} sip match for {virtual_link_id}',
+            'message': f'got ingress {ingress_name} and egress {egress_name} sip match for {virtual_link_uuid}',
             'error': None
         }
 
-    def virtual_links_create(self, virtual_link_id):
+    def virtual_links_create(self, virtual_link_uuid):
         """
         This function creates virtual links defined in nsd between each vnf and also between vnf and single endpoints
-        :param virtual_link_id:
+        :param virtual_link_uuid:
         :return:
         """
-        ns_uuid = self.wtapi_ledger[virtual_link_id]["service_uuid"]
-        LOG.debug(f"Creating virtual link {virtual_link_id} for network Service {ns_uuid}")
+        ns_uuid = self.wtapi_ledger[virtual_link_uuid]["service_uuid"]
+        LOG.debug(f"Creating virtual link {virtual_link_uuid} for network Service {ns_uuid}")
         # TODO now there is only one ingress and one egress
         # TODO: add latency param and qos in general if it's included in the request
-        wim_host = self.wtapi_ledger[virtual_link_id]['wim']['host']
-        ingress_nap = self.wtapi_ledger[virtual_link_id]['ingress']['nap']
-        ingress_sip = self.wtapi_ledger[virtual_link_id]['ingress']['sip']
-        egress_nap = self.wtapi_ledger[virtual_link_id]['egress']['nap']
-        egress_sip = self.wtapi_ledger[virtual_link_id]['egress']['sip']
-        if self.wtapi_ledger[virtual_link_id]['qos']:
-            if self.wtapi_ledger[virtual_link_id]['qos']['bandwidth']:
-                requested_capacity = float(self.wtapi_ledger[virtual_link_id]['qos']['bandwidth']) * 1e6
+        wim_host = self.wtapi_ledger[virtual_link_uuid]['wim']['host']
+        ingress_nap = self.wtapi_ledger[virtual_link_uuid]['ingress']['nap']
+        ingress_sip = self.wtapi_ledger[virtual_link_uuid]['ingress']['sip']
+        egress_nap = self.wtapi_ledger[virtual_link_uuid]['egress']['nap']
+        egress_sip = self.wtapi_ledger[virtual_link_uuid]['egress']['sip']
+        if self.wtapi_ledger[virtual_link_uuid]['qos']:
+            if self.wtapi_ledger[virtual_link_uuid]['qos']['bandwidth']:
+                requested_capacity = float(self.wtapi_ledger[virtual_link_uuid]['qos']['bandwidth']) * 1e6
             else:
                 requested_capacity = 1.5e9
-            if self.wtapi_ledger[virtual_link_id]['qos']['latency']:
-                requested_latency = self.wtapi_ledger[virtual_link_id]['qos']['latency']
+            if self.wtapi_ledger[virtual_link_uuid]['qos']['latency']:
+                requested_latency = self.wtapi_ledger[virtual_link_uuid]['qos']['latency']
             else:
                 requested_latency = None
         else:
@@ -459,7 +459,7 @@ class TapiWrapper(object):
             requested_capacity = 5e6
             requested_latency = None
 
-        self.wtapi_ledger[virtual_link_id]['active_connectivity_services'] = []
+        self.wtapi_ledger[virtual_link_uuid]['active_connectivity_services'] = []
         connectivity_services = [
             self.engine.generate_cs_from_nap_pair(
                 ingress_nap, egress_nap,
@@ -481,7 +481,7 @@ class TapiWrapper(object):
         for connectivity_service in connectivity_services:
             try:
                 self.engine.create_connectivity_service(wim_host, connectivity_service)
-                self.wtapi_ledger[virtual_link_id]['active_connectivity_services'].append(
+                self.wtapi_ledger[virtual_link_uuid]['active_connectivity_services'].append(
                     connectivity_service['uuid'])
 
             except Exception as exc:
@@ -499,27 +499,27 @@ class TapiWrapper(object):
         #             LOG.error('{} generated an exception: {}'.format(call_id, exc))
         return {'result': True, 'message': [cs['uuid'] for cs in connectivity_services]}
 
-    def virtual_links_remove(self, virtual_link_id):
+    def virtual_links_remove(self, virtual_link_uuid):
         """
         This function removes virtual links previously created
-        :param virtual_link_id:
+        :param virtual_link_uuid:
         :return:
         """
-        LOG.debug('Network Service {}: Removing virtual links'.format(virtual_link_id))
-        wim_host = self.wtapi_ledger[virtual_link_id]['wim']['host']
+        LOG.debug('Network Service {}: Removing virtual links'.format(virtual_link_uuid))
+        wim_host = self.wtapi_ledger[virtual_link_uuid]['wim']['host']
 
         # Gather all connectivity services
-        if 'active_connectivity_services' in self.wtapi_ledger[virtual_link_id].keys():
+        if 'active_connectivity_services' in self.wtapi_ledger[virtual_link_uuid].keys():
             conn_services_to_remove = [
-                {'cs_uuid': cs_uuid, 'vl_id': virtual_link_id}
-                for cs_uuid in self.wtapi_ledger[virtual_link_id]['active_connectivity_services']
+                {'cs_uuid': cs_uuid, 'vl_id': virtual_link_uuid}
+                for cs_uuid in self.wtapi_ledger[virtual_link_uuid]['active_connectivity_services']
             ]
         else:
             conn_services_to_remove = []
-            LOG.warning(f'Requested virtual_links_remove for {virtual_link_id} '
+            LOG.warning(f'Requested virtual_links_remove for {virtual_link_uuid} '
                         f'but there are no active connections')
 
-        for rel_virtual_link_id in self.wtapi_ledger[virtual_link_id]['related_vls']:
+        for rel_virtual_link_id in self.wtapi_ledger[virtual_link_uuid]['related_vls']:
             if 'active_connectivity_services' in self.wtapi_ledger[rel_virtual_link_id].keys():
                 conn_services_to_remove.extend(
                     [
@@ -567,14 +567,14 @@ class TapiWrapper(object):
               latency_unit: '<unit, if absent default ms>'
             bidirectional: true
         """
-        def send_error_response(error, virtual_link_id, scaling_type=None):
+        def send_error_response(error, virtual_link_uuid, scaling_type=None):
 
             response = {
                 'error': error,
                 'request_status': 'ERROR'
             }
             msg = ' Response on create request: ' + str(response)
-            LOG.info('Virtual link ' + str(virtual_link_id) + msg)
+            LOG.info('Virtual link ' + str(virtual_link_uuid) + msg)
             self.manoconn.notify(topics.WAN_CONFIGURE,
                                  yaml.dump(response),
                                  correlation_id=properties.correlation_id)
@@ -610,6 +610,7 @@ class TapiWrapper(object):
             return
 
         virtual_link_id = message['vl_id']
+        virtual_link_uuid = str(uuid.uuid4())
         service_instance_id = message['service_instance_id']
 
         # Schedule the tasks that the Wrapper should do for this request.
@@ -626,9 +627,10 @@ class TapiWrapper(object):
         LOG.info(f"Enabling virtual link {virtual_link_id} for service {service_instance_id}")
 
         # We are suposing that only a unique WIM will serve one service_instance
-        if virtual_link_id not in self.wtapi_ledger.keys():
-            self.wtapi_ledger[virtual_link_id] = {
-                'uuid': virtual_link_id,
+        if virtual_link_uuid not in self.wtapi_ledger.keys():
+            self.wtapi_ledger[virtual_link_uuid] = {
+                'uuid': virtual_link_uuid,
+                'vl_id': virtual_link_id,
                 'service_uuid': service_instance_id,
                 'wim': {'uuid': message['wim_uuid']},
                 'egress': message['egress'],  # location=uuid, nap=ip
@@ -644,12 +646,12 @@ class TapiWrapper(object):
                 'topic': properties.reply_to,
             }
 
-        msg = "New network service request received. Creating flows..."
-        LOG.info(f"Network Service {virtual_link_id}: {msg}")
+        msg = "New virtual link request received. Creating flows..."
+        LOG.info(f"NS {service_instance_id}, VL:{virtual_link_id}: {msg}")
         # Start the chain of tasks
-        self.start_next_task(virtual_link_id)
+        self.start_next_task(virtual_link_uuid)
 
-        return self.wtapi_ledger[virtual_link_id]['schedule']
+        return self.wtapi_ledger[virtual_link_uuid]['schedule']
 
     def wan_network_deconfigure(self, ch, method, properties, payload):
         """
@@ -657,14 +659,14 @@ class TapiWrapper(object):
         topic.
         payload: { service_instance_id: :uuid:}
         """
-        def send_error_response(error, virtual_link_id, scaling_type=None):
+        def send_error_response(error, virtual_link_uuid, scaling_type=None):
 
             response = {
                 'error': error,
                 'request_status': 'ERROR'
             }
             msg = ' Response on remove request: ' + str(response)
-            LOG.info('Service ' + str(virtual_link_id) + msg)
+            LOG.info('Service ' + str(virtual_link_uuid) + msg)
             self.manoconn.notify(topics.WAN_DECONFIGURE,
                                  yaml.dump(response),
                                  correlation_id=properties.correlation_id)
@@ -701,9 +703,9 @@ class TapiWrapper(object):
         else:
             virtual_links = [virtual_link for virtual_link in self.wtapi_ledger if virtual_link['service_instance_id'] == service_instance_id]
 
-        virtual_link_id = virtual_links.pop(0)
+        virtual_link_uuid = virtual_links.pop(0)
 
-        self.wtapi_ledger[virtual_link_id]['related_vls'] = virtual_links  # Link other virtual_links related by service_instance_id
+        self.wtapi_ledger[virtual_link_uuid]['related_vls'] = virtual_links  # Link other virtual_links related by service_instance_id
 
 
 
@@ -717,16 +719,16 @@ class TapiWrapper(object):
             'clean_ledger'
         ]
 
-        self.wtapi_ledger[virtual_link_id]['schedule'].extend(add_schedule)
-        self.wtapi_ledger[virtual_link_id]['topic'] = properties.reply_to
-        self.wtapi_ledger[virtual_link_id]['orig_corr_id'] = properties.correlation_id
+        self.wtapi_ledger[virtual_link_uuid]['schedule'].extend(add_schedule)
+        self.wtapi_ledger[virtual_link_uuid]['topic'] = properties.reply_to
+        self.wtapi_ledger[virtual_link_uuid]['orig_corr_id'] = properties.correlation_id
 
         msg = "Network service remove request received."
         LOG.info("Network Service {}: {}".format(service_instance_id, msg))
         # Start the chain of tasks
-        self.start_next_task(virtual_link_id)
+        self.start_next_task(virtual_link_uuid)
 
-        return self.wtapi_ledger[virtual_link_id]['schedule']
+        return self.wtapi_ledger[virtual_link_uuid]['schedule']
 
 
 
@@ -752,28 +754,28 @@ class TapiWrapper(object):
     def ia_deconfigure_response(self, ch, method, prop, payload):
         pass
 
-    def respond_to_request(self, virtual_link_id):
+    def respond_to_request(self, virtual_link_uuid):
         """
         This method creates a response message for the sender of requests.
         """
 
         message = {
-            'error': self.wtapi_ledger[virtual_link_id]['error'],
-            'virtual_link_id': virtual_link_id,
+            'error': self.wtapi_ledger[virtual_link_uuid]['error'],
+            'virtual_link_uuid': virtual_link_uuid,
         }
 
-        if self.wtapi_ledger[virtual_link_id]['error'] is None:
+        if self.wtapi_ledger[virtual_link_uuid]['error'] is None:
             message["request_status"] = "COMPLETED"
         else:
             message["request_status"] = "FAILED"
 
-        if self.wtapi_ledger[virtual_link_id]['message'] is not None:
-            message["message"] = self.wtapi_ledger[virtual_link_id]['message']
+        if self.wtapi_ledger[virtual_link_uuid]['message'] is not None:
+            message["message"] = self.wtapi_ledger[virtual_link_uuid]['message']
 
-        LOG.info("Generating response to the workflow request for {}".format(virtual_link_id))
+        LOG.info("Generating response to the workflow request for {}".format(virtual_link_uuid))
 
-        corr_id = self.wtapi_ledger[virtual_link_id]['orig_corr_id']
-        topic = self.wtapi_ledger[virtual_link_id]['topic']
+        corr_id = self.wtapi_ledger[virtual_link_uuid]['orig_corr_id']
+        topic = self.wtapi_ledger[virtual_link_uuid]['topic']
         message["timestamp"] = time.time()
         self.manoconn.notify(
             topic,
