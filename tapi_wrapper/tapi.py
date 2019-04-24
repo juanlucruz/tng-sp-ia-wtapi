@@ -325,13 +325,14 @@ class TapiWrapper(object):
             cursor = connection.cursor()
             wim_uuid = self.wtapi_ledger[virtual_link_uuid]['wim']['uuid']
             query_wim = f"SELECT (name, endpoint) FROM wim WHERE uuid = '{wim_uuid}';"
-            LOG.debug(f'query: {query_wim}')
+            LOG.debug(f'query_wim: {query_wim}')
             cursor.execute(query_wim)
             resp = cursor.fetchall()
-            LOG.debug(f"query_wim: {resp}")
+            LOG.debug(f"resp_wim: {resp}")
             # TODO Check resp len || multiple wims for a vim?
-            wim_name = resp[0][0]
-            wim_endpoint = resp[0][1]
+            clean_resp = resp[0][0][1:-1].split(',')
+            wim_name = clean_resp[0]
+            wim_endpoint = clean_resp[1]
             self.wtapi_ledger[virtual_link_uuid]['wim']['host'] = f'{wim_endpoint}:8182'
             self.wtapi_ledger[virtual_link_uuid]['wim']['name'] = wim_name
             return {'result': True, 'message': f'got wim {wim_name} for {virtual_link_uuid}'}
@@ -365,19 +366,23 @@ class TapiWrapper(object):
                                           database="vimregistry")
             cursor = connection.cursor()
             query_ingress = f"SELECT (name, type) FROM vim WHERE uuid = '{ingress_endpoint_uuid}';"
+            LOG.debug(f"query_ingress: {query_ingress}")
             cursor.execute(query_ingress)
             resp = cursor.fetchall()
-            LOG.debug(f"query_ingress: {resp}")
+            LOG.debug(f"response_ingress: {resp}")
             # TODO Check resp len || multiple wims for a vim?
-            ingress_name = resp[0][0]  # Name is used to correlate with sips
-            ingress_type = resp[0][1]
+            clean_resp = resp[0][0][1:-1].split(',')  # [('(NeP_1,endpoint)',)]
+            ingress_name = clean_resp[0]  # Name is used to correlate with sips
+            ingress_type = clean_resp[1]
             query_egress = f"SELECT (name, type) FROM vim WHERE uuid = '{egress_endpoint_uuid}';"
+            LOG.debug(f"query_egress: {query_ingress}")
             cursor.execute(query_egress)
             resp = cursor.fetchall()
-            LOG.debug(f"query_egress: {resp}")
+            LOG.debug(f"response_egress: {resp}")
             # TODO Check resp len || multiple wims for a vim?
-            egress_name = resp[0][0]
-            egress_type = resp[0][1]
+            clean_resp = resp[0][0][1:-1].split(',')
+            egress_name = clean_resp[0]
+            egress_type = clean_resp[1]
             if not (ingress_name or egress_name):
                 raise Exception('Both Ingress and Egress were not found in DB')
             elif not ingress_name:
