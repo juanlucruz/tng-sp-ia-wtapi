@@ -118,12 +118,12 @@ class TapiWrapperEngine(object):
         :return call:
         """
         allowed_layer = {'ETH', 'MPLS'}
-        special_layer = {'mpls_arp'}
+        special_layer = {'MPLS_ARP'}
         allowed_direction = {'UNIDIRECTIONAL', 'BIDIRECTIONAL'}
         if direction not in allowed_direction:
             raise ValueError('Direction {} must be one of {}'.format(direction, allowed_direction))
         if not (layer in allowed_layer or layer in special_layer):
-            raise ValueError('Layer {} must be one of {}'.format(layer, allowed_layer))
+            raise ValueError('Layer {} must be one of {}'.format(layer, allowed_layer.union(special_layer)))
         if layer == 'ETH' or (layer == 'MPLS' and direction == 'UNIDIRECTIONAL'):
             connectivity_service = {
                 "uuid": str(self.index),
