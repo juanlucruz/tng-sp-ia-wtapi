@@ -452,12 +452,12 @@ class TapiWrapper(object):
         ingress_sip = self.wtapi_ledger[virtual_link_uuid]['ingress']['sip']
         egress_nap = self.wtapi_ledger[virtual_link_uuid]['egress']['nap']
         egress_sip = self.wtapi_ledger[virtual_link_uuid]['egress']['sip']
-        if self.wtapi_ledger[virtual_link_uuid]['qos']:
-            if self.wtapi_ledger[virtual_link_uuid]['qos']['bandwidth']:
+        if 'qos' in self.wtapi_ledger[virtual_link_uuid]:
+            if 'bandwidth' in self.wtapi_ledger[virtual_link_uuid]['qos']:
                 requested_capacity = float(self.wtapi_ledger[virtual_link_uuid]['qos']['bandwidth']) * 1e6
             else:
                 requested_capacity = 1.5e9
-            if self.wtapi_ledger[virtual_link_uuid]['qos']['latency']:
+            if 'latency' in self.wtapi_ledger[virtual_link_uuid]['qos']:
                 requested_latency = self.wtapi_ledger[virtual_link_uuid]['qos']['latency']
             else:
                 requested_latency = None
@@ -471,19 +471,23 @@ class TapiWrapper(object):
             self.engine.generate_cs_from_nap_pair(
                 ingress_nap, egress_nap,
                 ingress_sip['value'], egress_sip['value'],
-                layer='MPLS', direction='UNIDIRECTIONAL', requested_capacity=requested_capacity),
+                layer='MPLS', direction='UNIDIRECTIONAL',
+                requested_capacity=requested_capacity, latency=requested_latency),
             self.engine.generate_cs_from_nap_pair(
                 ingress_nap, egress_nap,
                 egress_sip['value'], ingress_sip['value'],
-                layer='MPLS', direction='UNIDIRECTIONAL', requested_capacity=requested_capacity),
+                layer='MPLS', direction='UNIDIRECTIONAL',
+                requested_capacity=requested_capacity, latency=requested_latency),
             self.engine.generate_cs_from_nap_pair(
                 ingress_nap, egress_nap,
                 ingress_sip['value'], egress_sip['value'],
-                layer='MPLS_ARP', direction='UNIDIRECTIONAL', requested_capacity=requested_capacity),
+                layer='MPLS_ARP', direction='UNIDIRECTIONAL',
+                requested_capacity=requested_capacity, latency=requested_latency),
             self.engine.generate_cs_from_nap_pair(
                 ingress_nap, egress_nap,
                 egress_sip['value'], ingress_sip['value'],
-                layer='MPLS_ARP', direction='UNIDIRECTIONAL', requested_capacity=requested_capacity)
+                layer='MPLS_ARP', direction='UNIDIRECTIONAL',
+                requested_capacity=requested_capacity, latency=requested_latency),
         ]
         for connectivity_service in connectivity_services:
             try:
