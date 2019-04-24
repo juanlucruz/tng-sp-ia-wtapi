@@ -249,7 +249,7 @@ class TapiWrapperEngine(object):
 
     def remove_connectivity_service(self, wim_host, uuid):
         LOG.debug('TapiWrapper: Removing connectivity service {}'.format(uuid))
-        tapi_cs_url = f'http://{wim_host}/restconf/config/context/connectivity-service/{cs["uuid"]}/'
+        tapi_cs_url = f'http://{wim_host}/restconf/config/context/connectivity-service/{uuid}/'
         headers = {'Accept': 'application/json'}
         try:
             response = requests.delete(tapi_cs_url, headers=headers)
