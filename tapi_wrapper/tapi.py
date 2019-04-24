@@ -285,6 +285,7 @@ class TapiWrapper(object):
                                           database="wimregistry")
             cursor = connection.cursor()
             query = f"DELETE FROM service_instances WHERE instance_uuid IN '{tuple(virtual_link_ids)}';"
+            LOG.debug(f'query: {query}')
             cursor.execute(query)
             connection.commit()
             return {'result': True, 'message': f'wimregistry deleted for {virtual_link_ids}'}
@@ -324,6 +325,7 @@ class TapiWrapper(object):
             cursor = connection.cursor()
             wim_uuid = self.wtapi_ledger[virtual_link_uuid]['wim']['uuid']
             query_wim = f"SELECT (name, endpoint) FROM wim WHERE uuid = '{wim_uuid}';"
+            LOG.debug(f'query: {query_wim}')
             cursor.execute(query_wim)
             resp = cursor.fetchall()
             LOG.debug(f"query_wim: {resp}")
@@ -511,7 +513,7 @@ class TapiWrapper(object):
         # Gather all connectivity services
         if 'active_connectivity_services' in self.wtapi_ledger[virtual_link_uuid].keys():
             conn_services_to_remove = [
-                {'cs_uuid': cs_uuid, 'vl_id': virtual_link_uuid}
+                {'cs_uuid': cs_uuid, 'vl_uuid': virtual_link_uuid}
                 for cs_uuid in self.wtapi_ledger[virtual_link_uuid]['active_connectivity_services']
             ]
         else:
@@ -523,7 +525,7 @@ class TapiWrapper(object):
             if 'active_connectivity_services' in self.wtapi_ledger[rel_virtual_link_id].keys():
                 conn_services_to_remove.extend(
                     [
-                        {'cs_uuid': cs_uuid, 'vl_id': rel_virtual_link_id}
+                        {'cs_uuid': cs_uuid, 'vl_uuid': rel_virtual_link_id}
                         for cs_uuid in self.wtapi_ledger[rel_virtual_link_id]['active_connectivity_services']
                     ]
                 )
@@ -535,7 +537,7 @@ class TapiWrapper(object):
         vl_removed = set()
         for cs in conn_services_to_remove:
             self.engine.remove_connectivity_service(wim_host, cs['cs_uuid'])
-            vl_removed.update(cs['vl_id'])
+            vl_removed.update(cs['vl_uuid'])
 
         for virtual_link in vl_removed:
             self.wtapi_ledger[virtual_link]['active_connectivity_services'] = []
@@ -617,7 +619,7 @@ class TapiWrapper(object):
         schedule = [
             'get_wim_info',
             'get_endpoints_info',
-            'match_endpoints_with_sips'
+            'match_endpoints_with_sips',
             'virtual_links_create',
             'insert_reference_database',
             'respond_to_request'
