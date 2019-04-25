@@ -578,10 +578,10 @@ class TapiWrapper(object):
               latency_unit: '<unit, if absent default ms>'
             bidirectional: true
         """
-        def send_error_response(error, virtual_link_uuid, scaling_type=None):
+        def send_error_response(error, virtual_link_uuid):
 
             response = {
-                'error': error,
+                'message': error,
                 'request_status': 'ERROR'
             }
             msg = ' Response on create request: ' + str(response)
@@ -670,10 +670,10 @@ class TapiWrapper(object):
         topic.
         payload: { service_instance_id: :uuid:}
         """
-        def send_error_response(error, virtual_link_uuid, scaling_type=None):
+        def send_error_response(error, virtual_link_uuid):
 
             response = {
-                'error': error,
+                'message': error,
                 'request_status': 'ERROR'
             }
             msg = ' Response on remove request: ' + str(response)
@@ -742,52 +742,40 @@ class TapiWrapper(object):
         return self.wtapi_ledger[virtual_link_uuid]['schedule']
 
 
-
-    def no_resp_needed(self, ch, method, prop, payload):
-        """
-        Dummy response method when other component will send a response, but
-        FLM does not need it
-        """
-
-        pass
-
-    def ia_configure_response(self, ch, method, prop, payload):
-        """
-
-        :param ch:
-        :param method:
-        :param prop:
-        :param payload:
-        :return:
-        """
-        pass
-
-    def ia_deconfigure_response(self, ch, method, prop, payload):
-        pass
-
     def respond_to_request(self, virtual_link_uuid):
         """
         This method creates a response message for the sender of requests.
         """
 
-        message = {
-            'error': self.wtapi_ledger[virtual_link_uuid]['error'],
-            'virtual_link_uuid': virtual_link_uuid,
-        }
-
-        if self.wtapi_ledger[virtual_link_uuid]['error'] is None:
-            message["request_status"] = "COMPLETED"
+        if self.wtapi_ledger[virtual_link_uuid]['error'] is None \
+                and self.wtapi_ledger[virtual_link_uuid]['message'] is None:
+            message = {
+                'message': f'Virtual link {self.wtapi_ledger[virtual_link_uuid]["vl_id"]} created',
+                'request_status': 'COMPLETED'
+            }
+        elif self.wtapi_ledger[virtual_link_uuid]['error'] is None \
+                and self.wtapi_ledger[virtual_link_uuid]['message'] is not None:
+            message = {
+                'message': self.wtapi_ledger[virtual_link_uuid]['message'],
+                'request_status': 'COMPLETED'
+            }
+        elif self.wtapi_ledger[virtual_link_uuid]['error'] is not None \
+                and self.wtapi_ledger[virtual_link_uuid]['message'] is not None:
+            message = {
+                'message': self.wtapi_ledger[virtual_link_uuid]['message'],
+                'request_status': 'ERROR'
+            }
         else:
-            message["request_status"] = "FAILED"
-
-        if self.wtapi_ledger[virtual_link_uuid]['message'] is not None:
-            message["message"] = self.wtapi_ledger[virtual_link_uuid]['message']
+            message = {
+                'message': None,
+                'request_status': 'ERROR'
+            }
 
         LOG.info("Generating response to the workflow request for {}".format(virtual_link_uuid))
 
         corr_id = self.wtapi_ledger[virtual_link_uuid]['orig_corr_id']
         topic = self.wtapi_ledger[virtual_link_uuid]['topic']
-        message["timestamp"] = time.time()
+        # message["timestamp"] = time.time()
         self.manoconn.notify(
             topic,
             yaml.dump(message),
