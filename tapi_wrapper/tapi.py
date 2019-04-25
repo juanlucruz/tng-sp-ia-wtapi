@@ -747,7 +747,7 @@ class TapiWrapper(object):
         # Start the chain of tasks
         self.start_next_task(virtual_link_uuid)
 
-        return self.wtapi_ledger[virtual_link_uuid]['schedule']
+        return
 
 
     def respond_to_request(self, virtual_link_uuid):
