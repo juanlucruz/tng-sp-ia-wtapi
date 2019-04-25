@@ -717,7 +717,7 @@ class TapiWrapper(object):
         # else:
         #     virtual_links = [virtual_link for virtual_link in self.wtapi_ledger if virtual_link['service_instance_id'] == service_instance_id]
 
-        virtual_link_uuid = [[virtual_link['uuid'] for virtual_link in self.wtapi_ledger if virtual_link['vl_id'] == message['vl_id']]].pop(0)
+        virtual_link_uuid = [virtual_link['uuid'] for virtual_link in self.wtapi_ledger if virtual_link['vl_id'] == message['vl_id']].pop(0)
 
         # self.wtapi_ledger[virtual_link_uuid]['related_vls'] = virtual_links  # Link other virtual_links related by service_instance_id
 
