@@ -276,7 +276,6 @@ class TapiWrapper(object):
         cursor = None
         virtual_link_id = virtual_link_uuid
         # virtual_link_ids.extend(self.wtapi_ledger[virtual_link_uuid]['related_vls'])
-
         try:
             connection = psycopg2.connect(user=self.psql_user,
                                           password=self.psql_pass,
@@ -553,6 +552,7 @@ class TapiWrapper(object):
             self.engine.remove_connectivity_service(wim_host, cs)
         self.wtapi_ledger[virtual_link_uuid]['active_connectivity_services'] = []
 
+
         return {'result': True, 'message': conn_services_to_remove, 'error': None}
 
     #############################
@@ -721,10 +721,6 @@ class TapiWrapper(object):
 
         # self.wtapi_ledger[virtual_link_uuid]['related_vls'] = virtual_links  # Link other virtual_links related by service_instance_id
 
-
-
-
-        # Schedule the tasks that the K8S Wrapper should do for this request.
         # LOG.debug(f"Virtual links deployed {virtual_links} for service {service_instance_id}")
         add_schedule = [
             'virtual_links_remove',
@@ -741,10 +737,8 @@ class TapiWrapper(object):
         LOG.info("Network Service {}: {}".format(service_instance_id, msg))
         # Start the chain of tasks
         self.start_next_task(virtual_link_uuid)
-
         return self.wtapi_ledger[virtual_link_uuid]['schedule']
-
-
+                          
     def respond_to_request(self, virtual_link_uuid):
         """
         This method creates a response message for the sender of requests.
