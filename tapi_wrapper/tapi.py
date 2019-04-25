@@ -749,13 +749,15 @@ class TapiWrapper(object):
         if self.wtapi_ledger[virtual_link_uuid]['error'] is None \
                 and self.wtapi_ledger[virtual_link_uuid]['message'] is None:
             message = {
-                'message': f'Virtual link {self.wtapi_ledger[virtual_link_uuid]["vl_id"]} created',
+                # 'message': f'Virtual link {self.wtapi_ledger[virtual_link_uuid]["vl_id"]} created',
+                'message': None,
                 'request_status': 'COMPLETED'
             }
         elif self.wtapi_ledger[virtual_link_uuid]['error'] is None \
                 and self.wtapi_ledger[virtual_link_uuid]['message'] is not None:
             message = {
-                'message': self.wtapi_ledger[virtual_link_uuid]['message'],
+                # 'message': self.wtapi_ledger[virtual_link_uuid]['message'],
+                'message': None,
                 'request_status': 'COMPLETED'
             }
         elif self.wtapi_ledger[virtual_link_uuid]['error'] is not None \
