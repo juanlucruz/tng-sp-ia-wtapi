@@ -721,10 +721,6 @@ class TapiWrapper(object):
 
         # self.wtapi_ledger[virtual_link_uuid]['related_vls'] = virtual_links  # Link other virtual_links related by service_instance_id
 
-
-
-
-        # Schedule the tasks that the K8S Wrapper should do for this request.
         # LOG.debug(f"Virtual links deployed {virtual_links} for service {service_instance_id}")
         add_schedule = [
             'virtual_links_remove',
