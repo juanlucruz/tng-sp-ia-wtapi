@@ -109,6 +109,7 @@ class TapiWrapper(object):
         # register subscriptions
 
         self.declare_subscriptions()
+        self.init_setup()
 
         if start_running:
             LOG.info("Tapi plugin running...")
@@ -144,6 +145,13 @@ class TapiWrapper(object):
         # The topic on which release requests are posted.
         self.manoconn.subscribe(self.wan_network_deconfigure, topics.WAN_DECONFIGURE)
         LOG.info("Subscription to {} created".format(topics.WAN_DECONFIGURE))
+
+    def init_setup(self):
+        # TODO:
+        # Retrieve tapi wims
+        # Remove every vl associated to each tapi wim
+        # Mirror tapi db to ia db
+        pass
 
 ##########################
 # TAPI Threading management
@@ -186,7 +194,7 @@ class TapiWrapper(object):
             # Select the next task, only if task list is not empty
             if len(self.wtapi_ledger[virtual_link_uuid]['schedule']) > 0:
                 scheduled = self.wtapi_ledger[virtual_link_uuid]['schedule'].pop(0)
-                LOG.debug('Network Service {}: Running {}'.format(virtual_link_uuid, scheduled))
+                LOG.debug(f'Virtual link {virtual_link_uuid}: Running {scheduled}')
                 # share state with other WTAPI Wrappers (pop)
                 next_task = getattr(self, scheduled)
 
@@ -205,6 +213,7 @@ class TapiWrapper(object):
                 self.start_next_task(virtual_link_uuid)
             else:
                 # del self.wtapi_ledger[cs_id]
+                self.clean_ledger(virtual_link_uuid)
                 LOG.info(f"Virtual link #{virtual_link_uuid} of Network Service #{ns_uuid}: Schedule finished")
                 return virtual_link_uuid
         except Exception as e:
@@ -301,10 +310,12 @@ class TapiWrapper(object):
                 connection.close()
 
     def clean_ledger(self, virtual_link_uuid):
-        LOG.debug('Cleaning context of {}'.format(virtual_link_uuid))
+        LOG.debug(f'Cleaning context of {virtual_link_uuid}')
         if self.wtapi_ledger[virtual_link_uuid]['schedule']:
+            LOG.debug(f'VL {virtual_link_uuid} schedule not empty: {self.wtapi_ledger[virtual_link_uuid]["schedule"]}')
             raise ValueError('Schedule not empty')
         elif self.wtapi_ledger[virtual_link_uuid]['active_connectivity_services']:
+            LOG.debug(f'VL {virtual_link_uuid} active_connectivity_services not empty: {self.wtapi_ledger[virtual_link_uuid]["active_connectivity_services"]}')
             raise ValueError('There are still active connectivity services')
         else:
             del self.wtapi_ledger[virtual_link_uuid]
@@ -347,14 +358,13 @@ class TapiWrapper(object):
             if connection:
                 connection.close()
 
-
     def get_endpoints_info(self, virtual_link_uuid):
         """
         This function retrieves info from endpoints (egress and ingress) attached in the MANO request
         :param virtual_link_uuid:
         :return:
         """
-        LOG.debug(f'Network Service {virtual_link_uuid}: get_endpoints_info')
+        LOG.debug(f'Virtual link {virtual_link_uuid}: get_endpoints_info')
         ingress_endpoint_uuid = self.wtapi_ledger[virtual_link_uuid]['ingress']['location']
         egress_endpoint_uuid = self.wtapi_ledger[virtual_link_uuid]['egress']['location']
         connection = None
@@ -726,14 +736,13 @@ class TapiWrapper(object):
             'virtual_links_remove',
             'delete_reference_database',
             'respond_to_request',
-            'clean_ledger'
         ]
 
         self.wtapi_ledger[virtual_link_uuid]['schedule'].extend(add_schedule)
         self.wtapi_ledger[virtual_link_uuid]['topic'] = properties.reply_to
         self.wtapi_ledger[virtual_link_uuid]['orig_corr_id'] = properties.correlation_id
 
-        msg = "Network service remove request received."
+        msg = "Virtual link remove request received."
         LOG.info("Network Service {}: {}".format(service_instance_id, msg))
         # Start the chain of tasks
         self.start_next_task(virtual_link_uuid)
