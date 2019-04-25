@@ -274,8 +274,8 @@ class TapiWrapper(object):
         # Delete created link from wimregistry
         connection = None
         cursor = None
-        virtual_link_ids = [virtual_link_uuid]
-        virtual_link_ids.extend(self.wtapi_ledger[virtual_link_uuid]['related_vls'])
+        virtual_link_id = virtual_link_uuid
+        # virtual_link_ids.extend(self.wtapi_ledger[virtual_link_uuid]['related_vls'])
 
         try:
             connection = psycopg2.connect(user=self.psql_user,
@@ -284,14 +284,15 @@ class TapiWrapper(object):
                                           port="5432",
                                           database="wimregistry")
             cursor = connection.cursor()
-            query = f"DELETE FROM service_instances WHERE instance_uuid IN '{tuple(virtual_link_ids)}';"
+            # query = f"DELETE FROM service_instances WHERE instance_uuid IN '{tuple(virtual_link_ids)}';"
+            query = f"DELETE FROM service_instances WHERE instance_uuid = '{virtual_link_id}';"
             LOG.debug(f'query: {query}')
             cursor.execute(query)
             connection.commit()
-            return {'result': True, 'message': f'wimregistry deleted for {virtual_link_ids}'}
+            return {'result': True, 'message': f'wimregistry deleted for {virtual_link_id}'}
         except (Exception, psycopg2.Error) as error:
             LOG.error(error)
-            return {'result': False, 'message': f'error deleting {virtual_link_ids}', 'error': error}
+            return {'result': False, 'message': f'error deleting {virtual_link_id}', 'error': error}
         finally:
             # closing database connection.
             if cursor:
@@ -530,26 +531,27 @@ class TapiWrapper(object):
             LOG.warning(f'Requested virtual_links_remove for {virtual_link_uuid} '
                         f'but there are no active connections')
 
-        for rel_virtual_link_id in self.wtapi_ledger[virtual_link_uuid]['related_vls']:
-            if 'active_connectivity_services' in self.wtapi_ledger[rel_virtual_link_id].keys():
-                conn_services_to_remove.extend(
-                    [
-                        {'cs_uuid': cs_uuid, 'vl_uuid': rel_virtual_link_id}
-                        for cs_uuid in self.wtapi_ledger[rel_virtual_link_id]['active_connectivity_services']
-                    ]
-                )
-            else:
-                LOG.warning(f'Requested virtual_links_remove for {rel_virtual_link_id} '
-                            f'but there are no active connections')
+        # for rel_virtual_link_id in self.wtapi_ledger[virtual_link_uuid]['related_vls']:
+        #     if 'active_connectivity_services' in self.wtapi_ledger[rel_virtual_link_id].keys():
+        #         conn_services_to_remove.extend(
+        #             [
+        #                 {'cs_uuid': cs_uuid, 'vl_uuid': rel_virtual_link_id}
+        #                 for cs_uuid in self.wtapi_ledger[rel_virtual_link_id]['active_connectivity_services']
+        #             ]
+        #         )
+        #     else:
+        #         LOG.warning(f'Requested virtual_links_remove for {rel_virtual_link_id} '
+        #                     f'but there are no active connections')
 
         # Take all connectivity services down
-        vl_removed = set()
-        for cs in conn_services_to_remove:
-            self.engine.remove_connectivity_service(wim_host, cs['cs_uuid'])
-            vl_removed.update(cs['vl_uuid'])
+        # vl_removed = set()
+        # for cs in conn_services_to_remove:
+        #     self.engine.remove_connectivity_service(wim_host, cs['cs_uuid'])
+        #     vl_removed.update(cs['vl_uuid'])
 
-        for virtual_link in vl_removed:
-            self.wtapi_ledger[virtual_link]['active_connectivity_services'] = []
+        for cs in conn_services_to_remove:
+            self.engine.remove_connectivity_service(wim_host, cs)
+        self.wtapi_ledger[virtual_link_uuid]['active_connectivity_services'] = []
 
         return {'result': True, 'message': conn_services_to_remove, 'error': None}
 
@@ -706,23 +708,24 @@ class TapiWrapper(object):
 
         service_instance_id = message['service_instance_id']
 
-        if 'vl_id' in message.keys():
-            if isinstance(message['vl_id'], list):
-                virtual_links = message['vl_id']
-            else:
-                virtual_links = [message['vl_id']]
-        else:
-            virtual_links = [virtual_link for virtual_link in self.wtapi_ledger if virtual_link['service_instance_id'] == service_instance_id]
+        # Only one vl_id comming now
+        # if 'vl_id' in message.keys():
+        #     if isinstance(message['vl_id'], list):
+        #         virtual_links = message['vl_id']
+        #     else:
+        #         virtual_links = [message['vl_id']]
+        # else:
+        #     virtual_links = [virtual_link for virtual_link in self.wtapi_ledger if virtual_link['service_instance_id'] == service_instance_id]
 
-        virtual_link_uuid = virtual_links.pop(0)
+        virtual_link_uuid = [[virtual_link['uuid'] for virtual_link in self.wtapi_ledger if virtual_link['vl_id'] == message['vl_id']]].pop(0)
 
-        self.wtapi_ledger[virtual_link_uuid]['related_vls'] = virtual_links  # Link other virtual_links related by service_instance_id
+        # self.wtapi_ledger[virtual_link_uuid]['related_vls'] = virtual_links  # Link other virtual_links related by service_instance_id
 
 
 
 
         # Schedule the tasks that the K8S Wrapper should do for this request.
-        LOG.debug(f"Virtual links deployed {virtual_links} for service {service_instance_id}")
+        # LOG.debug(f"Virtual links deployed {virtual_links} for service {service_instance_id}")
         add_schedule = [
             'virtual_links_remove',
             'delete_reference_database',
