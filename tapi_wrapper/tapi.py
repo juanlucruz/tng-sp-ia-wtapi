@@ -517,7 +517,7 @@ class TapiWrapper(object):
         :param virtual_link_uuid:
         :return:
         """
-        LOG.debug('Network Service {}: Removing virtual links'.format(virtual_link_uuid))
+        LOG.debug(f'Network Service {self.wtapi_ledger[virtual_link_uuid]["service_uuid"]}: Removing virtual links')
         wim_host = self.wtapi_ledger[virtual_link_uuid]['wim']['host']
 
         # Gather all connectivity services
@@ -528,7 +528,7 @@ class TapiWrapper(object):
             ]
         else:
             conn_services_to_remove = []
-            LOG.warning(f'Requested virtual_links_remove for {virtual_link_uuid} '
+            LOG.warning(f'Requested virtual_links_remove for {self.wtapi_ledger[virtual_link_uuid]["vl_id"]} '
                         f'but there are no active connections')
 
         # for rel_virtual_link_id in self.wtapi_ledger[virtual_link_uuid]['related_vls']:
@@ -550,7 +550,7 @@ class TapiWrapper(object):
         #     vl_removed.update(cs['vl_uuid'])
 
         for cs in conn_services_to_remove:
-            self.engine.remove_connectivity_service(wim_host, cs)
+            self.engine.remove_connectivity_service(wim_host, cs['cs_uuid'])
         self.wtapi_ledger[virtual_link_uuid]['active_connectivity_services'] = []
 
         return {'result': True, 'message': conn_services_to_remove, 'error': None}
