@@ -235,8 +235,32 @@ class TapiWrapper(object):
         This method is used to report back errors to the FLM
         """
         if error is None:
-            ns_uuid = self.wtapi_ledger[virtual_link_uuid]["service_uuid"]
-            error = self.wtapi_ledger[virtual_link_uuid]['error']
+            if virtual_link_uuid in self.wtapi_ledger:
+                if 'error' in self.wtapi_ledger[virtual_link_uuid]:
+                    error = self.wtapi_ledger[virtual_link_uuid]['error']
+                else:
+                    error = f'UNKNOWN error in {virtual_link_uuid}'
+        if virtual_link_uuid in self.wtapi_ledger:
+            if 'service_uuid' in self.wtapi_ledger[virtual_link_uuid]:
+                ns_uuid = self.wtapi_ledger[virtual_link_uuid]["service_uuid"]
+            else:
+                ns_uuid = 'UNKNOWN'
+
+            if 'orig_corr_id' in self.wtapi_ledger[virtual_link_uuid]:
+                corr_id = self.wtapi_ledger[virtual_link_uuid]['orig_corr_id']
+            else:
+                corr_id = str(uuid.uuid4())
+            if 'topic' in self.wtapi_ledger[virtual_link_uuid]:
+                topic = self.wtapi_ledger[virtual_link_uuid]['topic']
+            else:
+                topic = None
+
+        else:
+            ns_uuid = 'UNKNOWN'
+            topic = None
+            corr_id = str(uuid.uuid4())
+            error = f'UNKNOWN error in {virtual_link_uuid}'
+
         LOG.error(f'Virtual link #{virtual_link_uuid} of Network Service #{ns_uuid}: error occured: {error}')
 
         message = {
@@ -244,12 +268,12 @@ class TapiWrapper(object):
             'error': error,
             'timestamp': time.time()
         }
-        corr_id = self.wtapi_ledger[virtual_link_uuid]['orig_corr_id']
-        topic = self.wtapi_ledger[virtual_link_uuid]['topic']
-
-        self.manoconn.notify(topic,
-                             yaml.dump(message),
-                             correlation_id=corr_id)
+        if topic:
+            self.manoconn.notify(topic,
+                                 yaml.dump(message),
+                                 correlation_id=corr_id)
+        else:
+            LOG.error(f'Correct topic not found, {virtual_link_uuid}')
 
     #############################
     # Callbacks
@@ -298,7 +322,7 @@ class TapiWrapper(object):
                                           port="5432",
                                           database="wimregistry")
             cursor = connection.cursor()
-            query = f"DELETE FROM service_instances WHERE instance_uuid IN '{tuple(virtual_link_ids)}';"
+            query = f"DELETE FROM service_instances WHERE instance_uuid IN {tuple(virtual_link_ids)};"
             # query = f"DELETE FROM service_instances WHERE instance_uuid = '{virtual_link_id}';"
             LOG.debug(f'query: {query}')
             cursor.execute(query)
@@ -317,10 +341,10 @@ class TapiWrapper(object):
     def clean_ledger(self, virtual_link_uuid):
         LOG.debug(f'Cleaning context of {virtual_link_uuid}')
         if self.wtapi_ledger[virtual_link_uuid]['schedule']:
-            LOG.debug(f'VL {virtual_link_uuid} schedule not empty: {self.wtapi_ledger[virtual_link_uuid]["schedule"]}')
+            LOG.warning(f'VL {virtual_link_uuid} schedule not empty: {self.wtapi_ledger[virtual_link_uuid]["schedule"]}')
             raise ValueError('Schedule not empty')
         elif self.wtapi_ledger[virtual_link_uuid]['active_connectivity_services']:
-            LOG.debug(f'VL {virtual_link_uuid} active_connectivity_services not empty: '
+            LOG.warning(f'VL {virtual_link_uuid} active_connectivity_services not empty: '
                       f'{self.wtapi_ledger[virtual_link_uuid]["active_connectivity_services"]}')
             raise ValueError('There are still active connectivity services')
         else:
@@ -563,7 +587,10 @@ class TapiWrapper(object):
         vl_removed = set()
         for cs in conn_services_to_remove:
             self.engine.remove_connectivity_service(cs['wim_host'], cs['cs_uuid'])
-            vl_removed.update(cs['vl_uuid'])
+            vl_removed.update([cs['vl_uuid']])
+
+        for vl_uuid in vl_removed:
+            self.wtapi_ledger[vl_uuid]['active_connectivity_services'] = []
 
         LOG.debug(f'Virtual Links removed: {vl_removed}')
 
