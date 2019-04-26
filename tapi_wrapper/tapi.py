@@ -322,8 +322,10 @@ class TapiWrapper(object):
                                           port="5432",
                                           database="wimregistry")
             cursor = connection.cursor()
-            query = f"DELETE FROM service_instances WHERE instance_uuid IN {tuple(virtual_link_ids)};"
-            # query = f"DELETE FROM service_instances WHERE instance_uuid = '{virtual_link_id}';"
+            if len(virtual_link_ids) > 1:
+                query = f"DELETE FROM service_instances WHERE instance_uuid IN {tuple(virtual_link_ids)};"
+            else:
+                query = f"DELETE FROM service_instances WHERE instance_uuid = '{virtual_link_ids[0]}';"
             LOG.debug(f'query: {query}')
             cursor.execute(query)
             connection.commit()
