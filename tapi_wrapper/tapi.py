@@ -213,7 +213,10 @@ class TapiWrapper(object):
                 self.start_next_task(virtual_link_uuid)
             else:
                 # del self.wtapi_ledger[cs_id]
-                self.clean_ledger(virtual_link_uuid)
+                if self.wtapi_ledger[virtual_link_uuid]['status'] == 'INIT':
+                    self.wtapi_ledger[virtual_link_uuid]['status'] = 'OPERATIONAL'
+                elif self.wtapi_ledger[virtual_link_uuid]['status'] == 'TERMINATING':
+                    self.clean_ledger(virtual_link_uuid)
                 LOG.info(f"Virtual link #{virtual_link_uuid} of Network Service #{ns_uuid}: Schedule finished")
                 return virtual_link_uuid
         except Exception as e:
@@ -737,7 +740,7 @@ class TapiWrapper(object):
             'delete_reference_database',
             'respond_to_request',
         ]
-
+        self.wtapi_ledger[virtual_link_uuid]['status'] = 'TERMINATING'
         self.wtapi_ledger[virtual_link_uuid]['schedule'].extend(add_schedule)
         self.wtapi_ledger[virtual_link_uuid]['topic'] = properties.reply_to
         self.wtapi_ledger[virtual_link_uuid]['orig_corr_id'] = properties.correlation_id
