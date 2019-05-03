@@ -153,15 +153,44 @@ class TapiWrapper(object):
         # Mirror tapi db to ia db
         pass
 
-##########################
-# TAPI Threading management
-##########################
-
     def get_connectivity_service(self, cs_id):
+        # FIXME
         return self.wtapi_ledger[cs_id]
 
-    def get_services(self):
+    def get_virtual_links(self):
         return self.wtapi_ledger
+
+    def sip_to_endpoint_converter(self, sip_list):
+
+
+    def populate_database(self, endpoint_list):
+        connection = None
+        cursor = None
+        try:
+            connection = psycopg2.connect(user=self.psql_user,
+                                          password=self.psql_pass,
+                                          host="son-postgres",
+                                          port="5432",
+                                          database="wimregistry")
+            cursor = connection.cursor()
+            wim_uuid = self.wtapi_ledger[virtual_link_uuid]['wim']['uuid']
+
+            query = f"INSERT INTO service_instances (instance_uuid, wim_uuid) VALUES " \
+                    f"('{virtual_link_uuid}', '{wim_uuid}');"
+            LOG.debug(f'query: {query}')
+            cursor.execute(query)
+            connection.commit()
+            return {'result': True, 'message': f'wimregistry row created for {virtual_link_uuid}'}
+        except (Exception, psycopg2.Error) as error:
+            LOG.error(error)
+            return {'result': False, 'message': f'error inserting {virtual_link_uuid}', 'error': error}
+        finally:
+            # closing database connection.
+            if cursor:
+                cursor.close()
+            if connection:
+                connection.close()
+
 
     def get_capabilities(self, virtual_link_uuid):
         link_pairs = self.wtapi_ledger[virtual_link_uuid]['link_pairs']
@@ -343,7 +372,8 @@ class TapiWrapper(object):
     def clean_ledger(self, virtual_link_uuid):
         LOG.debug(f'Cleaning context of {virtual_link_uuid}')
         if self.wtapi_ledger[virtual_link_uuid]['schedule']:
-            LOG.warning(f'VL {virtual_link_uuid} schedule not empty: {self.wtapi_ledger[virtual_link_uuid]["schedule"]}')
+            LOG.warning(f'VL {virtual_link_uuid} schedule not empty: '
+                        f'{self.wtapi_ledger[virtual_link_uuid]["schedule"]}')
             raise ValueError('Schedule not empty')
         elif self.wtapi_ledger[virtual_link_uuid]['active_connectivity_services']:
             LOG.warning(f'VL {virtual_link_uuid} active_connectivity_services not empty: '
