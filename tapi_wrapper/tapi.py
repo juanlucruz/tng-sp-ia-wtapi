@@ -146,12 +146,126 @@ class TapiWrapper(object):
         self.manoconn.subscribe(self.wan_network_deconfigure, topics.WAN_DECONFIGURE)
         LOG.info("Subscription to {} created".format(topics.WAN_DECONFIGURE))
 
+    #############################
+    # TAPI Wrapper STARTUP
+    #############################
+
     def init_setup(self):
         # TODO:
         # Retrieve tapi wims
         # Remove every vl associated to each tapi wim
         # Mirror tapi db to ia db
-        pass
+        LOG.debug('Tapi wrapper setup')
+        wim_list = self.get_wims_setup()
+        for wim in wim_list:
+            sip_inv = self.engine.get_sip_inventory(':'.join([wim[2], '8182']))
+            vim_inv = self.get_vims_setup()
+            associated_endpoints = []
+            new_endpoints = []
+            for sip in sip_inv:
+                # How to know city, country of new endpoints?
+                vim_match = []
+                for name in sip['name']:
+                    vim_match = self.check_sip_vim(name, vim_inv)
+                    if vim_match:
+                        associated_endpoints.append({
+                            'vim_uuid': vim_match[0],
+                            'vim_endpoint': vim_match[2],
+                            'wim_uuid': wim[0]
+                        })
+                        break
+                if not vim_match:
+                    for name in sip['name']:
+                        new_uuid = uuid.uuid4()
+                        new_endpoints.append({'uuid': new_uuid, 'name': name['value-name']})
+                        associated_endpoints.append({'vim_uuid': new_uuid, 'vim_endpoint': '', 'wim_uuid': wim[0]})
+
+        self.populate_vim_database(new_endpoints)
+        self.attach_wim_to_endpoints(associated_endpoints)
+
+    def check_sip_vim(self, sip_name, vim_inv):
+        for vim in vim_inv:
+            if sip_name['value-name'] == vim[1]:
+                return vim
+        return []
+
+    def attach_wim_to_endpoints(self, endpoint_list):
+        connection = None
+        cursor = None
+        LOG.debug(f'Attaching WIMs to each corresponding endpoint, endpoints={endpoint_list}')
+        try:
+            connection = psycopg2.connect(user=self.psql_user,
+                                          password=self.psql_pass,
+                                          host="son-postgres",
+                                          port="5432",
+                                          database="wimregistry")
+            cursor = connection.cursor()
+            query = f"INSERT INTO attached_vim (vim_uuid, vim_address, wim_uuid) VALUES "
+            for endpoint in endpoint_list:
+                query += f"('{endpoint['vim_uuid']}', '{endpoint['vim_endpoint']}', '{endpoint['wim_uuid']}'),"
+            query = query[:-1] + ';'
+            LOG.debug(f'query: {query}')
+            cursor.execute(query)
+            connection.commit()
+        except (Exception, psycopg2.Error) as error:
+            LOG.error(error)
+        finally:
+            # closing database connection.
+            if cursor:
+                cursor.close()
+            if connection:
+                connection.close()
+
+    def get_wims_setup(self):
+        connection = None
+        cursor = None
+        LOG.debug('Getting WIMs from DB')
+        try:
+            connection = psycopg2.connect(user=self.psql_user,
+                                          password=self.psql_pass,
+                                          host="son-postgres",
+                                          port="5432",
+                                          database="wimregistry")
+            cursor = connection.cursor()
+            query = "SELECT uuid, name, endpoint FROM wim WHERE vendor='TAPI';"
+            LOG.debug(f'query: {query}')
+            cursor.execute(query)
+            wims = cursor.fetchall
+            return wims
+        except (Exception, psycopg2.Error) as error:
+            LOG.error(error)
+            return []
+        finally:
+            # closing database connection.
+            if cursor:
+                cursor.close()
+            if connection:
+                connection.close()
+
+    def get_vims_setup(self):
+        connection = None
+        cursor = None
+        try:
+            connection = psycopg2.connect(user=self.psql_user,
+                                          password=self.psql_pass,
+                                          host="son-postgres",
+                                          port="5432",
+                                          database="vimregistry")
+            cursor = connection.cursor()
+            query = "SELECT uuid, name, endpoint FROM vim WHERE vendor='Heat';"
+            LOG.debug(f'query: {query}')
+            cursor.execute(query)
+            vims = cursor.fetchall
+            return vims
+        except (Exception, psycopg2.Error) as error:
+            LOG.error(error)
+            return []
+        finally:
+            # closing database connection.
+            if cursor:
+                cursor.close()
+            if connection:
+                connection.close()
 
     def get_connectivity_service(self, cs_id):
         # FIXME
@@ -160,37 +274,34 @@ class TapiWrapper(object):
     def get_virtual_links(self):
         return self.wtapi_ledger
 
-    def sip_to_endpoint_converter(self, sip_list):
-
-
-    def populate_database(self, endpoint_list):
+    def populate_vim_database(self, endpoint_list):
         connection = None
         cursor = None
+        LOG.debug(f'Populating DB with new endpoints attached to wim, endpoints={endpoint_list}')
         try:
             connection = psycopg2.connect(user=self.psql_user,
                                           password=self.psql_pass,
                                           host="son-postgres",
                                           port="5432",
-                                          database="wimregistry")
+                                          database="vimregistry")
             cursor = connection.cursor()
-            wim_uuid = self.wtapi_ledger[virtual_link_uuid]['wim']['uuid']
-
-            query = f"INSERT INTO service_instances (instance_uuid, wim_uuid) VALUES " \
-                    f"('{virtual_link_uuid}', '{wim_uuid}');"
+            query = f"INSERT INTO vim (uuid, type, vendor, city, country, name, endpoint, username, domain, " \
+                    f"configuration, pass, authkey) VALUES "
+            for endpoint in endpoint_list:
+                query += f"('{endpoint['uuid']}', 'endpoint', 'endpoint', '', '', '{endpoint['name']}', '', '', '', " \
+                        f"'', '', ''),"
+            query = query[:-1] + ';'
             LOG.debug(f'query: {query}')
             cursor.execute(query)
             connection.commit()
-            return {'result': True, 'message': f'wimregistry row created for {virtual_link_uuid}'}
         except (Exception, psycopg2.Error) as error:
             LOG.error(error)
-            return {'result': False, 'message': f'error inserting {virtual_link_uuid}', 'error': error}
         finally:
             # closing database connection.
             if cursor:
                 cursor.close()
             if connection:
                 connection.close()
-
 
     def get_capabilities(self, virtual_link_uuid):
         link_pairs = self.wtapi_ledger[virtual_link_uuid]['link_pairs']
@@ -199,6 +310,10 @@ class TapiWrapper(object):
             # Insert capabilities to ledger
             pass
         return # {'result': True, 'message': f'wimregistry row created for {virtual_link_uuid}'}
+
+    #############################
+    # TAPI Wrapper input - output
+    #############################
 
     def start_next_task(self, virtual_link_uuid):
         """
@@ -253,7 +368,6 @@ class TapiWrapper(object):
         except Exception as e:
             self.wtapi_ledger[virtual_link_uuid]['schedule'] = []
             self.tapi_error(virtual_link_uuid, e)
-
 
 #############################
 # TAPI Wrapper input - output
@@ -398,15 +512,14 @@ class TapiWrapper(object):
                                           database="wimregistry")
             cursor = connection.cursor()
             wim_uuid = self.wtapi_ledger[virtual_link_uuid]['wim']['uuid']
-            query_wim = f"SELECT (name, endpoint) FROM wim WHERE uuid = '{wim_uuid}';"
+            query_wim = f"SELECT name, endpoint FROM wim WHERE uuid = '{wim_uuid}';"
             LOG.debug(f'query_wim: {query_wim}')
             cursor.execute(query_wim)
             resp = cursor.fetchall()
             LOG.debug(f"resp_wim: {resp}")
             # TODO Check resp len || multiple wims for a vim?
-            clean_resp = resp[0][0][1:-1].split(',')
-            wim_name = clean_resp[0]
-            wim_endpoint = clean_resp[1]
+            wim_name = resp[0][0]
+            wim_endpoint = resp[0][1]
             self.wtapi_ledger[virtual_link_uuid]['wim']['host'] = f'{wim_endpoint}:8182'
             self.wtapi_ledger[virtual_link_uuid]['wim']['name'] = wim_name
             return {'result': True, 'message': f'got wim {wim_name} for {virtual_link_uuid}'}
@@ -438,24 +551,22 @@ class TapiWrapper(object):
                                           port="5432",
                                           database="vimregistry")
             cursor = connection.cursor()
-            query_ingress = f"SELECT (name, type) FROM vim WHERE uuid = '{ingress_endpoint_uuid}';"
+            query_ingress = f"SELECT name, type FROM vim WHERE uuid = '{ingress_endpoint_uuid}';"
             LOG.debug(f"query_ingress: {query_ingress}")
             cursor.execute(query_ingress)
             resp = cursor.fetchall()
             LOG.debug(f"response_ingress: {resp}")
             # TODO Check resp len || multiple wims for a vim?
-            clean_resp = resp[0][0][1:-1].split(',')  # [('(NeP_1,endpoint)',)]
-            ingress_name = clean_resp[0]  # Name is used to correlate with sips
-            ingress_type = clean_resp[1]
-            query_egress = f"SELECT (name, type) FROM vim WHERE uuid = '{egress_endpoint_uuid}';"
+            ingress_name = resp[0][1]  # Name is used to correlate with sips
+            ingress_type = resp[0][1]
+            query_egress = f"SELECT name, type FROM vim WHERE uuid = '{egress_endpoint_uuid}';"
             LOG.debug(f"query_egress: {query_ingress}")
             cursor.execute(query_egress)
             resp = cursor.fetchall()
             LOG.debug(f"response_egress: {resp}")
             # TODO Check resp len || multiple wims for a vim?
-            clean_resp = resp[0][0][1:-1].split(',')
-            egress_name = clean_resp[0]
-            egress_type = clean_resp[1]
+            egress_name = resp[0][0]
+            egress_type = resp[0][1]
             if not (ingress_name or egress_name):
                 raise Exception('Both Ingress and Egress were not found in DB')
             elif not ingress_name:
