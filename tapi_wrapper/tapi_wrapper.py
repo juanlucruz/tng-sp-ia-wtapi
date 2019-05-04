@@ -264,7 +264,16 @@ class TapiWrapperEngine(object):
     def get_sip_by_name(self, wim_host, name):
         tapi_sip_url = f'http://{wim_host}/restconf/config/context/service-interface-point/'
         sip_list = requests.get(tapi_sip_url).json()
-        return list(filter(lambda x: x['name']['value-name'] == name, sip_list))[0]
+        filtered_sip = [sip for sip in sip_list for sip_name in sip['name'] if sip_name['value-name'] == name]
+        if len(filtered_sip) == 1:
+            return filtered_sip[0]
+        elif len(filtered_sip) == 0:
+            msg = f'Sip {name} not found in vim {wim_host}'
+            LOG.error(msg)
+            raise ValueError(msg)
+        else:
+            LOG.warning(f'Sip {name} was found more than once in vim {wim_host}')
+            return filtered_sip[0]
 
 
 test = TapiWrapperEngine()
