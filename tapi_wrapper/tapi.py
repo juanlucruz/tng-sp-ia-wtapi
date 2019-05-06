@@ -284,10 +284,7 @@ class TapiWrapper(object):
             return [endpoint['uuid'] for endpoint in filtered_endpoints]
         except (Exception, psycopg2.Error) as error:
             LOG.error(error)
-            if 'filtered_endpoints' in vars():
-                return [endpoint['uuid'] for endpoint in filtered_endpoints]
-            else:
-                return []
+            return []
         finally:
             # closing database connection.
             if cursor:
@@ -320,9 +317,10 @@ class TapiWrapper(object):
             LOG.debug(f'Attaching WIMs query: {query}')
             cursor.execute(query)
             connection.commit()
-            return [endpoint['uuid'] for endpoint in filtered_endpoints]
+            return [endpoint['vim_uuid'] for endpoint in filtered_endpoints]
         except (Exception, psycopg2.Error) as error:
             LOG.error(error)
+            return []
         finally:
             # closing database connection.
             if cursor:
