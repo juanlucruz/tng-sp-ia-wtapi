@@ -181,8 +181,8 @@ class TapiWrapper(object):
                     for name in sip['name']:
                         LOG.debug(f'Inserting sip={name}')
                         new_uuid = uuid.uuid4()
-                        new_endpoints.append({'uuid': new_uuid, 'name': name['value-name']})
-                        associated_endpoints.append({'vim_uuid': new_uuid, 'vim_endpoint': '', 'wim_uuid': wim[0]})
+                        new_endpoints.append({'uuid': str(new_uuid), 'name': name['value-name']})
+                        associated_endpoints.append({'vim_uuid': str(new_uuid), 'vim_endpoint': '', 'wim_uuid': wim[0]})
         LOG.debug(f'Populating vimregisry: {new_endpoints}')
         LOG.debug(f'Associating WIM with corresponding endpoints in wimregisry: {associated_endpoints}')
         self.populate_vim_database(new_endpoints)
