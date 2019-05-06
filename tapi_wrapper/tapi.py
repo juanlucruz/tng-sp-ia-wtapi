@@ -184,9 +184,10 @@ class TapiWrapper(object):
                         new_endpoints.append({'uuid': str(new_uuid), 'name': name['value-name']})
                         associated_endpoints.append({'vim_uuid': str(new_uuid), 'vim_endpoint': '', 'wim_uuid': wim[0]})
         LOG.debug(f'Populating vimregisry: {new_endpoints}')
+        inserted_endpoints = self.populate_vim_database(new_endpoints)
         LOG.debug(f'Associating WIM with corresponding endpoints in wimregisry: {associated_endpoints}')
-        self.populate_vim_database(new_endpoints)
-        self.attach_wim_to_endpoints(associated_endpoints)
+        attached_endpoints = self.attach_wim_to_endpoints(associated_endpoints, inserted_endpoints)
+        LOG.debug(f'New vim endpoints: {inserted_endpoints}, attached_endpoints: {attached_endpoints}')
 
     def check_sip_vim(self, sip_name, vim_inv):
         for vim in vim_inv:
@@ -268,7 +269,7 @@ class TapiWrapper(object):
             vim_names = "','".join([endpoint['name'] for endpoint in endpoint_list])
             safety_query = f"SELECT name FROM vim WHERE name IN ('{vim_names}')"
             cursor.execute(safety_query)
-            db_endpoints = [e[0] for e in cursor.fetchall()]
+            db_endpoints = set([e[0] for e in cursor.fetchall()])
             LOG.debug(f"Filtering {db_endpoints} to avoid duplicates")
             filtered_endpoints = [endpoint for endpoint in endpoint_list if endpoint['name'] not in db_endpoints]
             query = f"INSERT INTO vim (uuid, type, vendor, city, country, name, endpoint, username, domain, " \
@@ -280,6 +281,7 @@ class TapiWrapper(object):
             LOG.debug(f'Populating DB query: {query}')
             cursor.execute(query)
             connection.commit()
+            return filtered_endpoints
         except (Exception, psycopg2.Error) as error:
             LOG.error(error)
         finally:
@@ -289,7 +291,7 @@ class TapiWrapper(object):
             if connection:
                 connection.close()
 
-    def attach_wim_to_endpoints(self, endpoint_list):
+    def attach_wim_to_endpoints(self, endpoint_list, new_endpoint_list):
         connection = None
         cursor = None
         LOG.debug(f'Attaching WIMs to each corresponding endpoint, endpoints={endpoint_list}')
@@ -303,9 +305,9 @@ class TapiWrapper(object):
             vim_uuids = "','".join([endpoint['vim_uuid'] for endpoint in endpoint_list])
             safety_query = f"SELECT vim_uuid FROM attached_vim WHERE vim_uuid IN ('{vim_uuids}')"
             cursor.execute(safety_query)
-            db_endpoints = [e[0] for e in cursor.fetchall()]
+            db_endpoints = set([e[0] for e in cursor.fetchall()])
             LOG.debug(f"Filtering {db_endpoints} to avoid duplicates")
-            filtered_endpoints = [endpoint for endpoint in endpoint_list if endpoint['vim_uuid'] not in db_endpoints]
+            filtered_endpoints = [endpoint for endpoint in endpoint_list if endpoint['vim_uuid'] not in db_endpoints and endpoint['vim_uuid'] in new_endpoint_list['uuid']]
             query = f"INSERT INTO attached_vim (vim_uuid, vim_address, wim_uuid) VALUES "
             for endpoint in filtered_endpoints:
                 query += f"('{endpoint['vim_uuid']}', '{endpoint['vim_endpoint']}', '{endpoint['wim_uuid']}'),"
