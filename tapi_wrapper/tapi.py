@@ -281,7 +281,7 @@ class TapiWrapper(object):
             LOG.debug(f'Populating DB query: {query}')
             cursor.execute(query)
             connection.commit()
-            return filtered_endpoints
+            return [endpoint['uuid'] for endpoint in filtered_endpoints]
         except (Exception, psycopg2.Error) as error:
             LOG.error(error)
         finally:
@@ -308,6 +308,7 @@ class TapiWrapper(object):
             db_endpoints = set([e[0] for e in cursor.fetchall()])
             LOG.debug(f"Filtering {db_endpoints} to avoid duplicates")
             filtered_endpoints = [endpoint for endpoint in endpoint_list if endpoint['vim_uuid'] not in db_endpoints and endpoint['vim_uuid'] in new_endpoint_list['uuid']]
+            LOG.debug(f"Attaching {filtered_endpoints} after filter")
             query = f"INSERT INTO attached_vim (vim_uuid, vim_address, wim_uuid) VALUES "
             for endpoint in filtered_endpoints:
                 query += f"('{endpoint['vim_uuid']}', '{endpoint['vim_endpoint']}', '{endpoint['wim_uuid']}'),"
@@ -315,7 +316,7 @@ class TapiWrapper(object):
             LOG.debug(f'Attaching WIMs query: {query}')
             cursor.execute(query)
             connection.commit()
-            return filtered_endpoints
+            return [endpoint['uuid'] for endpoint in filtered_endpoints]
         except (Exception, psycopg2.Error) as error:
             LOG.error(error)
         finally:
