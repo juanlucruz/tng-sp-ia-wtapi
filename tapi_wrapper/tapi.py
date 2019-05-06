@@ -295,8 +295,8 @@ class TapiWrapper(object):
             query = f"INSERT INTO vim (uuid, type, vendor, city, country, name, endpoint, username, domain, " \
                     f"configuration, pass, authkey) VALUES "
             for endpoint in endpoint_list:
-                query += f"('{endpoint['uuid']}', 'endpoint', 'endpoint', '', '', '{endpoint['name']}', '', '', '', " \
-                        f"'', '', ''),"
+                query += f"('{endpoint['uuid']}','endpoint','endpoint','','','{endpoint['name']}','','',''," \
+                         f"'{{}}','',''),"
             query = query[:-1] + ';'
             LOG.debug(f'Populating DB query: {query}')
             cursor.execute(query)
