@@ -311,7 +311,7 @@ class TapiWrapper(object):
             cursor.execute(safety_query)
             db_endpoints = set([e[0] for e in cursor.fetchall()])
             LOG.debug(f"Filtering {db_endpoints} to avoid duplicates")
-            filtered_endpoints = [endpoint for endpoint in endpoint_list if endpoint['vim_uuid'] not in db_endpoints and endpoint['vim_uuid'] in new_endpoint_list['uuid']]
+            filtered_endpoints = [endpoint for endpoint in endpoint_list if endpoint['vim_uuid'] not in db_endpoints and endpoint['vim_uuid'] in new_endpoint_list]
             LOG.debug(f"Attaching {filtered_endpoints} after filter")
             query = f"INSERT INTO attached_vim (vim_uuid, vim_address, wim_uuid) VALUES "
             for endpoint in filtered_endpoints:
