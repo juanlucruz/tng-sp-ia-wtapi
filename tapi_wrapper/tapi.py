@@ -205,8 +205,14 @@ class TapiWrapper(object):
                                           port="5432",
                                           database="wimregistry")
             cursor = connection.cursor()
+            vim_uuids = "','".join([endpoint['vim_uuid'] for endpoint in endpoint_list])
+            safety_query = f"SELECT vim_uuid FROM attached_vim WHERE vim_uuid IN ('{vim_uuids}')"
+            cursor.execute(safety_query)
+            db_endpoints = [e[0] for e in cursor.fetchall()]
+            LOG.debug(db_endpoints)
+            filtered_endpoints = [endpoint for endpoint in endpoint_list if endpoint['vim_uuid'] not in db_endpoints]
             query = f"INSERT INTO attached_vim (vim_uuid, vim_address, wim_uuid) VALUES "
-            for endpoint in endpoint_list:
+            for endpoint in filtered_endpoints:
                 query += f"('{endpoint['vim_uuid']}', '{endpoint['vim_endpoint']}', '{endpoint['wim_uuid']}'),"
             query = query[:-1] + ';'
             LOG.debug(f'Attaching WIMs query: {query}')
@@ -292,9 +298,14 @@ class TapiWrapper(object):
                                           port="5432",
                                           database="vimregistry")
             cursor = connection.cursor()
+            vim_names = "','".join([endpoint['name'] for endpoint in endpoint_list])
+            safety_query = f"SELECT uuid FROM vim WHERE name IN ('{vim_names}')"
+            cursor.execute(safety_query)
+            db_endpoints = [e[0] for e in cursor.fetchall()]
+            filtered_endpoints = [endpoint for endpoint in endpoint_list if endpoint['uuid'] not in db_endpoints]
             query = f"INSERT INTO vim (uuid, type, vendor, city, country, name, endpoint, username, domain, " \
                     f"configuration, pass, authkey) VALUES "
-            for endpoint in endpoint_list:
+            for endpoint in filtered_endpoints:
                 query += f"('{endpoint['uuid']}','endpoint','endpoint','','','{endpoint['name']}','','',''," \
                          f"'{{}}','',''),"
             query = query[:-1] + ';'
@@ -414,9 +425,8 @@ class TapiWrapper(object):
         LOG.error(f'Virtual link #{virtual_link_uuid} of Network Service #{ns_uuid}: error occured: {error}')
 
         message = {
-            'request_status': 'FAILED',
-            'error': error,
-            'timestamp': time.time()
+            'request_status': 'ERROR',
+            'message': error,
         }
         if topic:
             self.manoconn.notify(topic,
