@@ -279,7 +279,7 @@ class TapiWrapperEngine(object):
         tapi_sip_url = f'http://{wim_host}/restconf/config/context/service-interface-point/'
         headers = {'Accept': 'application/json', 'Content-type': 'application/json'}
         try:
-            response = requests.post(tapi_sip_url, json, headers=headers)
+            response = requests.get(tapi_sip_url, headers=headers)
         except Exception as e:
             raise e
         else:
