@@ -194,39 +194,6 @@ class TapiWrapper(object):
                 return vim
         return []
 
-    def attach_wim_to_endpoints(self, endpoint_list):
-        connection = None
-        cursor = None
-        LOG.debug(f'Attaching WIMs to each corresponding endpoint, endpoints={endpoint_list}')
-        try:
-            connection = psycopg2.connect(user=self.psql_user,
-                                          password=self.psql_pass,
-                                          host="son-postgres",
-                                          port="5432",
-                                          database="wimregistry")
-            cursor = connection.cursor()
-            vim_uuids = "','".join([endpoint['vim_uuid'] for endpoint in endpoint_list])
-            safety_query = f"SELECT vim_uuid FROM attached_vim WHERE vim_uuid IN ('{vim_uuids}')"
-            cursor.execute(safety_query)
-            db_endpoints = [e[0] for e in cursor.fetchall()]
-            LOG.debug(db_endpoints)
-            filtered_endpoints = [endpoint for endpoint in endpoint_list if endpoint['vim_uuid'] not in db_endpoints]
-            query = f"INSERT INTO attached_vim (vim_uuid, vim_address, wim_uuid) VALUES "
-            for endpoint in filtered_endpoints:
-                query += f"('{endpoint['vim_uuid']}', '{endpoint['vim_endpoint']}', '{endpoint['wim_uuid']}'),"
-            query = query[:-1] + ';'
-            LOG.debug(f'Attaching WIMs query: {query}')
-            cursor.execute(query)
-            connection.commit()
-        except (Exception, psycopg2.Error) as error:
-            LOG.error(error)
-        finally:
-            # closing database connection.
-            if cursor:
-                cursor.close()
-            if connection:
-                connection.close()
-
     def get_wims_setup(self):
         connection = None
         cursor = None
@@ -302,6 +269,7 @@ class TapiWrapper(object):
             safety_query = f"SELECT uuid FROM vim WHERE name IN ('{vim_names}')"
             cursor.execute(safety_query)
             db_endpoints = [e[0] for e in cursor.fetchall()]
+            LOG.debug(f"Filtering {db_endpoints} to avoid duplicates")
             filtered_endpoints = [endpoint for endpoint in endpoint_list if endpoint['uuid'] not in db_endpoints]
             query = f"INSERT INTO vim (uuid, type, vendor, city, country, name, endpoint, username, domain, " \
                     f"configuration, pass, authkey) VALUES "
@@ -310,6 +278,39 @@ class TapiWrapper(object):
                          f"'{{}}','',''),"
             query = query[:-1] + ';'
             LOG.debug(f'Populating DB query: {query}')
+            cursor.execute(query)
+            connection.commit()
+        except (Exception, psycopg2.Error) as error:
+            LOG.error(error)
+        finally:
+            # closing database connection.
+            if cursor:
+                cursor.close()
+            if connection:
+                connection.close()
+
+    def attach_wim_to_endpoints(self, endpoint_list):
+        connection = None
+        cursor = None
+        LOG.debug(f'Attaching WIMs to each corresponding endpoint, endpoints={endpoint_list}')
+        try:
+            connection = psycopg2.connect(user=self.psql_user,
+                                          password=self.psql_pass,
+                                          host="son-postgres",
+                                          port="5432",
+                                          database="wimregistry")
+            cursor = connection.cursor()
+            vim_uuids = "','".join([endpoint['vim_uuid'] for endpoint in endpoint_list])
+            safety_query = f"SELECT vim_uuid FROM attached_vim WHERE vim_uuid IN ('{vim_uuids}')"
+            cursor.execute(safety_query)
+            db_endpoints = [e[0] for e in cursor.fetchall()]
+            LOG.debug(f"Filtering {db_endpoints} to avoid duplicates")
+            filtered_endpoints = [endpoint for endpoint in endpoint_list if endpoint['vim_uuid'] not in db_endpoints]
+            query = f"INSERT INTO attached_vim (vim_uuid, vim_address, wim_uuid) VALUES "
+            for endpoint in filtered_endpoints:
+                query += f"('{endpoint['vim_uuid']}', '{endpoint['vim_endpoint']}', '{endpoint['wim_uuid']}'),"
+            query = query[:-1] + ';'
+            LOG.debug(f'Attaching WIMs query: {query}')
             cursor.execute(query)
             connection.commit()
         except (Exception, psycopg2.Error) as error:
