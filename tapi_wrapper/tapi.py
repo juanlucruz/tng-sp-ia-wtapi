@@ -284,6 +284,10 @@ class TapiWrapper(object):
             return [endpoint['uuid'] for endpoint in filtered_endpoints]
         except (Exception, psycopg2.Error) as error:
             LOG.error(error)
+            if 'filtered_endpoints' in vars():
+                return [endpoint['uuid'] for endpoint in filtered_endpoints]
+            else:
+                return []
         finally:
             # closing database connection.
             if cursor:
