@@ -231,7 +231,7 @@ class TapiWrapper(object):
             query = "SELECT uuid, name, endpoint FROM wim WHERE vendor='Tapi';"
             LOG.debug(f'query: {query}')
             cursor.execute(query)
-            wims = cursor.fetchall
+            wims = cursor.fetchall()
             LOG.debug(f'Found wims: {wims}')
             return wims
         except (Exception, psycopg2.Error) as error:
@@ -257,7 +257,7 @@ class TapiWrapper(object):
             query = "SELECT uuid, name, endpoint FROM vim WHERE vendor='Heat';"
             LOG.debug(f'query: {query}')
             cursor.execute(query)
-            vims = cursor.fetchall
+            vims = cursor.fetchall()
             return vims
         except (Exception, psycopg2.Error) as error:
             LOG.error(error)
