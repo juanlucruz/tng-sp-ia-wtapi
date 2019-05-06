@@ -160,6 +160,7 @@ class TapiWrapper(object):
         associated_endpoints = []
         new_endpoints = []
         for wim in wim_list:
+            LOG.debug(f'Inserting {wim} sips into IADB')
             sip_inv = self.engine.get_sip_inventory(':'.join([wim[2], '8182']))
             vim_inv = self.get_vims_setup()
             for sip in sip_inv:
@@ -168,6 +169,7 @@ class TapiWrapper(object):
                 for name in sip['name']:
                     vim_match = self.check_sip_vim(name, vim_inv)
                     if vim_match:
+                        LOG.debug(f'Sip={name} matching a vim')
                         associated_endpoints.append({
                             'vim_uuid': vim_match[0],
                             'vim_endpoint': vim_match[2],
@@ -176,6 +178,7 @@ class TapiWrapper(object):
                         break
                 if not vim_match:
                     for name in sip['name']:
+                        LOG.debug(f'Inserting sip={name}')
                         new_uuid = uuid.uuid4()
                         new_endpoints.append({'uuid': new_uuid, 'name': name['value-name']})
                         associated_endpoints.append({'vim_uuid': new_uuid, 'vim_endpoint': '', 'wim_uuid': wim[0]})
@@ -254,10 +257,11 @@ class TapiWrapper(object):
                                           port="5432",
                                           database="vimregistry")
             cursor = connection.cursor()
-            query = "SELECT uuid, name, endpoint FROM vim WHERE vendor='Heat';"
+            query = "SELECT uuid, name, endpoint FROM vim WHERE vendor IN ('Heat', 'Mock', 'k8s');"
             LOG.debug(f'query: {query}')
             cursor.execute(query)
             vims = cursor.fetchall()
+            LOG.debug(f'Found vims: {vims}')
             return vims
         except (Exception, psycopg2.Error) as error:
             LOG.error(error)
