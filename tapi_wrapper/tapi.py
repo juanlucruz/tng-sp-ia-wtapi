@@ -157,11 +157,11 @@ class TapiWrapper(object):
         # Mirror tapi db to ia db
         LOG.debug('Tapi wrapper setup')
         wim_list = self.get_wims_setup()
+        associated_endpoints = []
+        new_endpoints = []
         for wim in wim_list:
             sip_inv = self.engine.get_sip_inventory(':'.join([wim[2], '8182']))
             vim_inv = self.get_vims_setup()
-            associated_endpoints = []
-            new_endpoints = []
             for sip in sip_inv:
                 # How to know city, country of new endpoints?
                 vim_match = []
@@ -179,7 +179,8 @@ class TapiWrapper(object):
                         new_uuid = uuid.uuid4()
                         new_endpoints.append({'uuid': new_uuid, 'name': name['value-name']})
                         associated_endpoints.append({'vim_uuid': new_uuid, 'vim_endpoint': '', 'wim_uuid': wim[0]})
-
+        LOG.debug(f'Populating vimregisry: {new_endpoints}')
+        LOG.debug(f'Associating WIM with corresponding endpoints in wimregisry: {associated_endpoints}')
         self.populate_vim_database(new_endpoints)
         self.attach_wim_to_endpoints(associated_endpoints)
 
@@ -227,10 +228,11 @@ class TapiWrapper(object):
                                           port="5432",
                                           database="wimregistry")
             cursor = connection.cursor()
-            query = "SELECT uuid, name, endpoint FROM wim WHERE vendor='TAPI';"
+            query = "SELECT uuid, name, endpoint FROM wim WHERE vendor='Tapi';"
             LOG.debug(f'query: {query}')
             cursor.execute(query)
             wims = cursor.fetchall
+            LOG.debug(f'Found wims: {wims}')
             return wims
         except (Exception, psycopg2.Error) as error:
             LOG.error(error)
