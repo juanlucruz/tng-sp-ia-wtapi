@@ -209,7 +209,7 @@ class TapiWrapper(object):
             for endpoint in endpoint_list:
                 query += f"('{endpoint['vim_uuid']}', '{endpoint['vim_endpoint']}', '{endpoint['wim_uuid']}'),"
             query = query[:-1] + ';'
-            LOG.debug(f'query: {query}')
+            LOG.debug(f'Attaching WIMs query: {query}')
             cursor.execute(query)
             connection.commit()
         except (Exception, psycopg2.Error) as error:
@@ -298,7 +298,7 @@ class TapiWrapper(object):
                 query += f"('{endpoint['uuid']}', 'endpoint', 'endpoint', '', '', '{endpoint['name']}', '', '', '', " \
                         f"'', '', ''),"
             query = query[:-1] + ';'
-            LOG.debug(f'query: {query}')
+            LOG.debug(f'Populating DB query: {query}')
             cursor.execute(query)
             connection.commit()
         except (Exception, psycopg2.Error) as error:
