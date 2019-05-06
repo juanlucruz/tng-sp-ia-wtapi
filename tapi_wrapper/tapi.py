@@ -266,11 +266,11 @@ class TapiWrapper(object):
                                           database="vimregistry")
             cursor = connection.cursor()
             vim_names = "','".join([endpoint['name'] for endpoint in endpoint_list])
-            safety_query = f"SELECT uuid FROM vim WHERE name IN ('{vim_names}')"
+            safety_query = f"SELECT name FROM vim WHERE name IN ('{vim_names}')"
             cursor.execute(safety_query)
             db_endpoints = [e[0] for e in cursor.fetchall()]
             LOG.debug(f"Filtering {db_endpoints} to avoid duplicates")
-            filtered_endpoints = [endpoint for endpoint in endpoint_list if endpoint['uuid'] not in db_endpoints]
+            filtered_endpoints = [endpoint for endpoint in endpoint_list if endpoint['name'] not in db_endpoints]
             query = f"INSERT INTO vim (uuid, type, vendor, city, country, name, endpoint, username, domain, " \
                     f"configuration, pass, authkey) VALUES "
             for endpoint in filtered_endpoints:
