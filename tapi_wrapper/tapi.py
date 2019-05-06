@@ -164,6 +164,7 @@ class TapiWrapper(object):
             sip_inv = self.engine.get_sip_inventory(':'.join([wim[2], '8182']))
             vim_inv = self.get_vims_setup()
             for sip in sip_inv:
+                LOG.debug(f'Processing sip {sip}')
                 # How to know city, country of new endpoints?
                 vim_match = []
                 for name in sip['name']:
@@ -257,7 +258,7 @@ class TapiWrapper(object):
                                           port="5432",
                                           database="vimregistry")
             cursor = connection.cursor()
-            query = "SELECT uuid, name, endpoint FROM vim WHERE vendor IN ('Heat', 'Mock', 'k8s');"
+            query = "SELECT uuid, name, endpoint FROM vim WHERE vendor IN ('Heat', 'Mock');"
             LOG.debug(f'query: {query}')
             cursor.execute(query)
             vims = cursor.fetchall()
