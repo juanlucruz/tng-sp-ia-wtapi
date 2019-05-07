@@ -317,7 +317,7 @@ class TapiWrapper(object):
             LOG.debug(f'Attaching WIMs query: {query}')
             cursor.execute(query)
             connection.commit()
-            return [endpoint['uuid'] for endpoint in filtered_endpoints]
+            return [endpoint['vim_uuid'] for endpoint in filtered_endpoints]
         except (Exception, psycopg2.Error) as error:
             LOG.error(error)
             return []
