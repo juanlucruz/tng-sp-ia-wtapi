@@ -869,7 +869,6 @@ class TapiWrapper(object):
                 'kill_service': False,
                 'schedule': schedule,
                 'topic': properties.reply_to,
-                'flavor': message['flavor']
             }
         else:
             raise KeyError('Duplicated virtual_link_uuid')
