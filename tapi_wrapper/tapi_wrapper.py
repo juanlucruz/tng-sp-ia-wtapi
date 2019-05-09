@@ -125,6 +125,7 @@ class TapiWrapperEngine(object):
         if not (layer in allowed_layer or layer in special_layer):
             raise ValueError('Layer {} must be one of {}'.format(layer, allowed_layer.union(special_layer)))
         if layer == 'ETH' or (layer == 'MPLS' and direction == 'UNIDIRECTIONAL'):
+            LOG.debug(f'Generating {layer} cs #{self.index}')
             connectivity_service = {
                 "uuid": str(self.index),
                 "end-point": [
@@ -156,6 +157,7 @@ class TapiWrapperEngine(object):
                 }
             }
         elif layer == 'ARP':
+            LOG.debug(f'Generating {layer} cs #{self.index}')
             connectivity_service = {
                 "uuid": str(self.index),
                 "end-point": [
@@ -187,6 +189,7 @@ class TapiWrapperEngine(object):
                 }
             }
         elif layer == 'MPLS_ARP' and direction == 'UNIDIRECTIONAL':
+            LOG.debug(f'Generating {layer} cs #{self.index}')
             connectivity_service = {
                 "uuid": str(self.index),
                 "end-point": [
@@ -218,7 +221,8 @@ class TapiWrapperEngine(object):
                 }
             }
         else:
-            raise AttributeError('Layer {} is not compatible with direction {}'.format(layer, direction))
+            raise AttributeError(f'Layer {layer} is not compatible with direction {direction}')
+        LOG.debug(f'finished cs #{self.index} creation')
         self.index += 1
         return connectivity_service
 
@@ -228,7 +232,7 @@ class TapiWrapperEngine(object):
         :param cs:
         :return:
         """
-        LOG.debug('TapiWrapper: Creating connectivity service {}'.format(cs['uuid']))
+        LOG.debug(f'TapiWrapper: Creating connectivity service {cs["uuid"]}')
         tapi_cs_url = f'http://{wim_host}/restconf/config/context/connectivity-service/{cs["uuid"]}/'
         headers = {'Content-type': 'application/json'}
         try:
