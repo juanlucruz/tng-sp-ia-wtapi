@@ -129,15 +129,13 @@ class TapiWrapperEngine(object):
                 "uuid": str(self.index),
                 "end-point": [
                     {
-                        "service-interface-point": "/restconf/config/context/service-interface-point/{}/".format(
-                            ingress_ep),
+                        "service-interface-point": f"/restconf/config/context/service-interface-point/{ingress_ep}/",
                         "direction": "BIDIRECTIONAL",
                         "layer-protocol-name": "ETH",
                         "role": "SYMMETRIC"
                     },
                     {
-                        "service-interface-point": "/restconf/config/context/service-interface-point/{}/".format(
-                            egress_ep),
+                        "service-interface-point": f"/restconf/config/context/service-interface-point/{egress_ep}/",
                         "direction": "BIDIRECTIONAL",
                         "layer-protocol-name": "ETH",
                         "role": "SYMMETRIC"
@@ -162,15 +160,13 @@ class TapiWrapperEngine(object):
                 "uuid": str(self.index),
                 "end-point": [
                     {
-                        "service-interface-point": "/restconf/config/context/service-interface-point/{}/".format(
-                            ingress_ep),
+                        "service-interface-point": f"/restconf/config/context/service-interface-point/{ingress_ep}/",
                         "direction": "BIDIRECTIONAL",
                         "layer-protocol-name": "ETH",
                         "role": "SYMMETRIC"
                     },
                     {
-                        "service-interface-point": "/restconf/config/context/service-interface-point/{}/".format(
-                            egress_ep),
+                        "service-interface-point": f"/restconf/config/context/service-interface-point/{egress_ep}/",
                         "direction": "BIDIRECTIONAL",
                         "layer-protocol-name": "ETH",
                         "role": "SYMMETRIC"
@@ -195,15 +191,13 @@ class TapiWrapperEngine(object):
                 "uuid": str(self.index),
                 "end-point": [
                     {
-                        "service-interface-point": "/restconf/config/context/service-interface-point/{}/".format(
-                            ingress_ep),
+                        "service-interface-point": f"/restconf/config/context/service-interface-point/{ingress_ep}/",
                         "direction": "BIDIRECTIONAL",
                         "layer-protocol-name": "ETH",
                         "role": "SYMMETRIC"
                     },
                     {
-                        "service-interface-point": "/restconf/config/context/service-interface-point/{}/".format(
-                            egress_ep),
+                        "service-interface-point": f"/restconf/config/context/service-interface-point/{egress_ep}/",
                         "direction": "BIDIRECTIONAL",
                         "layer-protocol-name": "ETH",
                         "role": "SYMMETRIC"

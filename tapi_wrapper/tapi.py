@@ -645,8 +645,8 @@ class TapiWrapper(object):
         egress_name = self.wtapi_ledger[virtual_link_uuid]['egress']['name']
         ingress_sip = self.engine.get_sip_by_name(wim_host, ingress_name)
         egress_sip = self.engine.get_sip_by_name(wim_host, egress_name)
-        self.wtapi_ledger[virtual_link_uuid]['ingress']['sip'] = ingress_sip['name']  # value-name and value
-        self.wtapi_ledger[virtual_link_uuid]['egress']['sip'] = egress_sip['name']
+        self.wtapi_ledger[virtual_link_uuid]['ingress']['sip'] = ingress_sip['uuid']  # value-name and value
+        self.wtapi_ledger[virtual_link_uuid]['egress']['sip'] = egress_sip['uuid']
         return {
             'result': True,
             'message': f'got ingress {ingress_name} and egress {egress_name} sip match for {virtual_link_uuid}',
@@ -664,9 +664,15 @@ class TapiWrapper(object):
         # TODO now there is only one ingress and one egress
         # TODO: add latency param and qos in general if it's included in the request
         wim_host = self.wtapi_ledger[virtual_link_uuid]['wim']['host']
-        ingress_nap = self.wtapi_ledger[virtual_link_uuid]['ingress']['nap']
+        if len(self.wtapi_ledger[virtual_link_uuid]['ingress']['nap'].split('/')) == 2:
+            ingress_nap = self.wtapi_ledger[virtual_link_uuid]['ingress']['nap']
+        else:
+            ingress_nap = '/'.join([self.wtapi_ledger[virtual_link_uuid]['ingress']['nap'], '32'])
         ingress_sip = self.wtapi_ledger[virtual_link_uuid]['ingress']['sip']
-        egress_nap = self.wtapi_ledger[virtual_link_uuid]['egress']['nap']
+        if len(self.wtapi_ledger[virtual_link_uuid]['ingress']['nap'].split('/')) == 2:
+            egress_nap = self.wtapi_ledger[virtual_link_uuid]['egress']['nap']
+        else:
+            egress_nap = '/'.join([self.wtapi_ledger[virtual_link_uuid]['egress']['nap'], '32'])
         egress_sip = self.wtapi_ledger[virtual_link_uuid]['egress']['sip']
         if 'qos' in self.wtapi_ledger[virtual_link_uuid]:
             if 'bandwidth' in self.wtapi_ledger[virtual_link_uuid]['qos']:
@@ -681,7 +687,9 @@ class TapiWrapper(object):
             # Best effort
             requested_capacity = 5e6
             requested_latency = None
-
+        LOG.debug(f'Parameters for VL_CREATE: wim={wim_host}, ingress_nap={ingress_nap}, ingress_sip={ingress_sip}, '
+                  f'egress_nap={egress_nap}, egress_sip={egress_sip}, '
+                  f'requested_capacity={requested_capacity}, requested_latency={requested_latency}')
         self.wtapi_ledger[virtual_link_uuid]['active_connectivity_services'] = []
         connectivity_services = [
             self.engine.generate_cs_from_nap_pair(
@@ -705,6 +713,7 @@ class TapiWrapper(object):
                 layer='MPLS_ARP', direction='UNIDIRECTIONAL',
                 requested_capacity=requested_capacity, latency=requested_latency),
         ]
+
         for connectivity_service in connectivity_services:
             try:
                 self.engine.create_connectivity_service(wim_host, connectivity_service)
