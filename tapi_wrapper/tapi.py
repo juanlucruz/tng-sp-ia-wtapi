@@ -669,7 +669,7 @@ class TapiWrapper(object):
         else:
             ingress_nap = '/'.join([self.wtapi_ledger[virtual_link_uuid]['ingress']['nap'], '32'])
         ingress_sip = self.wtapi_ledger[virtual_link_uuid]['ingress']['sip']
-        if len(self.wtapi_ledger[virtual_link_uuid]['ingress']['nap'].split('/')) == 2:
+        if len(self.wtapi_ledger[virtual_link_uuid]['egress']['nap'].split('/')) == 2:
             egress_nap = self.wtapi_ledger[virtual_link_uuid]['egress']['nap']
         else:
             egress_nap = '/'.join([self.wtapi_ledger[virtual_link_uuid]['egress']['nap'], '32'])
