@@ -668,12 +668,12 @@ class TapiWrapper(object):
             ingress_nap = self.wtapi_ledger[virtual_link_uuid]['ingress']['nap']
         else:
             ingress_nap = '/'.join([self.wtapi_ledger[virtual_link_uuid]['ingress']['nap'], '32'])
-        ingress_sip = self.wtapi_ledger[virtual_link_uuid]['ingress']['sip']
+        ingress_sip_uuid = self.wtapi_ledger[virtual_link_uuid]['ingress']['sip']
         if len(self.wtapi_ledger[virtual_link_uuid]['egress']['nap'].split('/')) == 2:
             egress_nap = self.wtapi_ledger[virtual_link_uuid]['egress']['nap']
         else:
             egress_nap = '/'.join([self.wtapi_ledger[virtual_link_uuid]['egress']['nap'], '32'])
-        egress_sip = self.wtapi_ledger[virtual_link_uuid]['egress']['sip']
+        egress_sip_uuid = self.wtapi_ledger[virtual_link_uuid]['egress']['sip']
         if 'qos' in self.wtapi_ledger[virtual_link_uuid]:
             if 'bandwidth' in self.wtapi_ledger[virtual_link_uuid]['qos']:
                 requested_capacity = float(self.wtapi_ledger[virtual_link_uuid]['qos']['bandwidth']) * 1e6
@@ -687,29 +687,29 @@ class TapiWrapper(object):
             # Best effort
             requested_capacity = 5e6
             requested_latency = None
-        LOG.debug(f'Parameters for VL_CREATE: wim={wim_host}, ingress_nap={ingress_nap}, ingress_sip={ingress_sip}, '
-                  f'egress_nap={egress_nap}, egress_sip={egress_sip}, '
+        LOG.debug(f'Parameters for VL_CREATE: wim={wim_host}, ingress_nap={ingress_nap}, ingress_sip={ingress_sip_uuid}, '
+                  f'egress_nap={egress_nap}, egress_sip={egress_sip_uuid}, '
                   f'requested_capacity={requested_capacity}, requested_latency={requested_latency}')
         self.wtapi_ledger[virtual_link_uuid]['active_connectivity_services'] = []
         connectivity_services = [
             self.engine.generate_cs_from_nap_pair(
                 ingress_nap, egress_nap,
-                ingress_sip['value'], egress_sip['value'],
+                ingress_sip_uuid, egress_sip_uuid,
                 layer='MPLS', direction='UNIDIRECTIONAL',
                 requested_capacity=requested_capacity, latency=requested_latency),
             self.engine.generate_cs_from_nap_pair(
                 ingress_nap, egress_nap,
-                egress_sip['value'], ingress_sip['value'],
+                egress_sip_uuid, ingress_sip_uuid,
                 layer='MPLS', direction='UNIDIRECTIONAL',
                 requested_capacity=requested_capacity, latency=requested_latency),
             self.engine.generate_cs_from_nap_pair(
                 ingress_nap, egress_nap,
-                ingress_sip['value'], egress_sip['value'],
+                ingress_sip_uuid, egress_sip_uuid,
                 layer='MPLS_ARP', direction='UNIDIRECTIONAL',
                 requested_capacity=requested_capacity, latency=requested_latency),
             self.engine.generate_cs_from_nap_pair(
                 ingress_nap, egress_nap,
-                egress_sip['value'], ingress_sip['value'],
+                egress_sip_uuid, ingress_sip_uuid,
                 layer='MPLS_ARP', direction='UNIDIRECTIONAL',
                 requested_capacity=requested_capacity, latency=requested_latency),
         ]
