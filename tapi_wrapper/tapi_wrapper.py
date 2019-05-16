@@ -117,6 +117,8 @@ class TapiWrapperEngine(object):
         :param requested_capacity:
         :return call:
         """
+        LOG.debug(f'ingress={ingress_ep[:8]}@{ingress_nap}, egress={egress_ep[:8]}@{egress_nap}, '
+                  f'layer={layer}, cap={requested_capacity}, latency={latency}')
         allowed_layer = {'ETH', 'MPLS'}
         special_layer = {'MPLS_ARP'}
         allowed_direction = {'UNIDIRECTIONAL', 'BIDIRECTIONAL'}
