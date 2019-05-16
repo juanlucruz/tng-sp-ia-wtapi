@@ -223,6 +223,7 @@ class TapiWrapperEngine(object):
                     'link-layer-type': "2054"
                 }
             }
+            
         else:
             raise AttributeError(f'Layer {layer} is not compatible with direction {direction}')
         LOG.debug(f'finished cs #{self.index} creation')
