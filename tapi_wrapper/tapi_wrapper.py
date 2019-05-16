@@ -121,8 +121,11 @@ class TapiWrapperEngine(object):
         special_layer = {'MPLS_ARP'}
         allowed_direction = {'UNIDIRECTIONAL', 'BIDIRECTIONAL'}
         if direction not in allowed_direction:
-            raise ValueError('Direction {} must be one of {}'.format(direction, allowed_direction))
+            err_msg = f'Direction {direction} must be one of {allowed_direction}'
+            LOG.error(err_msg)
+            raise ValueError(err_msg)
         if not (layer in allowed_layer or layer in special_layer):
+
             raise ValueError('Layer {} must be one of {}'.format(layer, allowed_layer.union(special_layer)))
         if layer == 'ETH' or (layer == 'MPLS' and direction == 'UNIDIRECTIONAL'):
             LOG.debug(f'Generating {layer} cs #{self.index}')

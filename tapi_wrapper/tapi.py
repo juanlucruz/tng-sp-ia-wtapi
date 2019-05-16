@@ -380,7 +380,7 @@ class TapiWrapper(object):
 
                 result = next_task(virtual_link_uuid)
                 LOG.debug(f'Virtual link #{virtual_link_uuid} of Network Service #{ns_uuid}: '
-                          f'Task finished, result: {result}')
+                          f'Task {scheduled} finished, result: {result}')
 
                 # Log if a task fails
                 # if task.exception() is not None:
@@ -592,7 +592,7 @@ class TapiWrapper(object):
             ingress_name = resp[0][0]  # Name is used to correlate with sips
             ingress_type = resp[0][1]
             query_egress = f"SELECT name, type FROM vim WHERE uuid = '{egress_endpoint_uuid}';"
-            LOG.debug(f"query_egress: {query_ingress}")
+            LOG.debug(f"query_egress: {query_egress}")
             cursor.execute(query_egress)
             resp = cursor.fetchall()
             LOG.debug(f"response_egress: {resp}")
