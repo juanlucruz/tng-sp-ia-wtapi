@@ -235,7 +235,7 @@ class TapiWrapperEngine(object):
         :param cs:
         :return:
         """
-        LOG.debug(f'TapiWrapper: Creating connectivity service {cs["uuid"]}')
+        LOG.debug(f'TapiWrapper: Creating connectivity service {cs["uuid"]} from {cs["end-point"][0]} to {cs["end-point"][1]}')
         tapi_cs_url = f'http://{wim_host}/restconf/config/context/connectivity-service/{cs["uuid"]}/'
         headers = {'Content-type': 'application/json'}
         try:
