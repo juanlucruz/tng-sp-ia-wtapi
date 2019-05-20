@@ -894,13 +894,16 @@ class TapiWrapper(object):
         else:
             raise KeyError('Duplicated virtual_link_uuid')
 
-        msg = "New virtual link request received. Creating flows..."
-        LOG.info(f"NS {service_instance_id}, VL:{virtual_link_id}: {msg}")
 
         if message['egress']['location'] == message['ingress']['location']:
+            LOG.info(f"NS {service_instance_id}, VL:{virtual_link_id}: "
+                     f"egress {message['egress']['location']} AND "
+                     f"ingress {message['ingress']['location']} are the same endpoint, aborting")
             self.respond_to_request(virtual_link_uuid)
         else:
             # Start the chain of tasks
+            msg = "New virtual link request received. Creating flows..."
+            LOG.info(f"NS {service_instance_id}, VL:{virtual_link_id}: {msg}")
             self.start_next_task(virtual_link_uuid)
 
         return self.wtapi_ledger[virtual_link_uuid]['schedule']
