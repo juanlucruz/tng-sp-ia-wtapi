@@ -158,7 +158,8 @@ class TapiWrapper(object):
             LOG.debug(f'Inserting {wim} sips into IADB')
             sip_inv = self.engine.get_sip_inventory(':'.join([wim[2], '8182']))
             vim_inv = self.get_vims_setup()
-            self.clean_wim_old_attachments(wim[0])
+            old_endpoints = self.clean_wim_old_attachments(wim[0])
+            self.clean_endpoints_from_vim_db(old_endpoints)
             for sip in sip_inv:
                 LOG.debug(f'Processing sip {sip}')
                 vim_match = self.check_sip_vim(sip, vim_inv)
