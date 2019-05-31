@@ -161,7 +161,6 @@ class TapiWrapper(object):
             self.clean_wim_old_attachments(wim[0])
             for sip in sip_inv:
                 LOG.debug(f'Processing sip {sip}')
-                # How to know city, country of new endpoints?
                 vim_match = self.check_sip_vim(sip, vim_inv)
                 sip_name = [
                     name['value'] for name in sip['name']
@@ -180,17 +179,19 @@ class TapiWrapper(object):
                     sip_country = [
                         name['value'] for name in sip['name']
                         if name['value-name'] == 'public-country'
-                    ].pop()
+                    ]
+                    LOG.debug(f'Inserting new sip={sip_name} country={sip_country}')
                     sip_city = [
                         name['value'] for name in sip['name']
                         if name['value-name'] == 'public-city'
-                    ].pop()
+                    ]
+                    LOG.debug(f'Inserting new sip={sip_name} city={sip_city}')
                     new_endpoints.append({
                         'uuid': str(new_uuid),
                         'name': sip_name,
-                        'city': sip_city,
-                        'country': sip_country
-                    }).pop()
+                        'city': sip_city.pop() if sip_city else '',
+                        'country': sip_country.pop() if sip_country else ''
+                    })
                     associated_endpoints.append({'vim_uuid': str(new_uuid), 'vim_endpoint': '', 'wim_uuid': wim[0]})
         LOG.debug(f'Populating vimregisry: {new_endpoints}')
         inserted_endpoints = self.populate_vim_database(new_endpoints)
