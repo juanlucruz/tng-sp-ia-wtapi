@@ -179,18 +179,18 @@ class TapiWrapper(object):
                     new_uuid = uuid.uuid4()
                     sip_country = [
                         name['value'] for name in sip['name']
-                        if name['value-name'] == 'country-name'
+                        if name['value-name'] == 'public-country'
                     ].pop()
                     sip_city = [
                         name['value'] for name in sip['name']
-                        if name['value-name'] == 'city-name'
+                        if name['value-name'] == 'public-city'
                     ].pop()
                     new_endpoints.append({
                         'uuid': str(new_uuid),
                         'name': sip_name,
                         'city': sip_city,
                         'country': sip_country
-                    })
+                    }).pop()
                     associated_endpoints.append({'vim_uuid': str(new_uuid), 'vim_endpoint': '', 'wim_uuid': wim[0]})
         LOG.debug(f'Populating vimregisry: {new_endpoints}')
         inserted_endpoints = self.populate_vim_database(new_endpoints)
