@@ -252,7 +252,7 @@ class TapiWrapper(object):
                                           port="5432",
                                           database="vimregistry")
             cursor = connection.cursor()
-            query = "SELECT uuid, name, endpoint FROM vim WHERE vendor IN ('Heat', 'Mock');"
+            query = "SELECT uuid, name, endpoint FROM vim WHERE vendor IN ('Heat', 'heat', 'Mock', 'mock');"
             LOG.debug(f'query: {query}')
             cursor.execute(query)
             vims = cursor.fetchall()
