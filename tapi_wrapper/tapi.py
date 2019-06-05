@@ -1116,8 +1116,6 @@ class TapiWrapper(object):
         #     send_error_response(error, None)
         #     return
 
-
-
     def respond_to_request(self, virtual_link_uuid):
         """
         This method creates a response message for the sender of requests.
