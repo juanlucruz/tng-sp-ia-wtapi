@@ -292,9 +292,9 @@ class TapiWrapper(object):
                 query_names = f"SELECT uuid FROM vim WHERE vendor = 'endpoint' AND name in {tuple(sip_names)}"
                 LOG.debug(f'query_names: {query_names}')
                 cursor.execute(query_names)
-                db_endpoints_by_name = cursor.fetchall()
-                LOG.debug(f"Removing {db_endpoints_by_name} from vimregistry to avoid duplicates")
-                query_delete_by_name = f"DELETE FROM vim WHERE vendor = 'endpoint' AND uuid in {db_endpoints_by_name}"
+                db_endpoints_by_name = [e[0] for e in cursor.fetchall()]
+                LOG.debug(f"Removing {db_endpoints_by_name} from vimregistry to avoid naming duplicates")
+                query_delete_by_name = f"DELETE FROM vim WHERE vendor = 'endpoint' AND uuid in {tuple(db_endpoints_by_name)}"
                 LOG.debug(f'query_delete_by_name: {query_delete_by_name}')
                 cursor.execute(query_delete_by_name)
                 connection.commit()
