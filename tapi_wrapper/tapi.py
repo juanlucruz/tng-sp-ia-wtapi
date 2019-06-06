@@ -159,11 +159,11 @@ class TapiWrapper(object):
             sip_inv = self.engine.get_sip_inventory(':'.join([wim[2], '8182']))
             vim_inv = self.get_vims_setup()
             old_endpoints = self.clean_wim_old_attachments(wim[0])
-            sip_name_list = (
+            sip_name_list = [
                 name['value'] for sip in sip_inv for name in sip['name']
                 if name['value-name'] == 'public-name'
-            )
-            self.clean_endpoints_from_vim_db(old_endpoints, sip_name_list)
+            ]
+            self.clean_endpoints_from_vim_db([e[0] for e in old_endpoints], sip_name_list)
             for sip in sip_inv:
                 LOG.debug(f'Processing sip {sip}')
                 vim_match = self.check_sip_vim(sip, vim_inv)
@@ -272,7 +272,7 @@ class TapiWrapper(object):
             if connection:
                 connection.close()
 
-    def clean_endpoints_from_vim_db(self, db_endpoints, sip_names=()):
+    def clean_endpoints_from_vim_db(self, db_endpoints, sip_names=None):
         connection = None
         cursor = None
         try:
@@ -283,13 +283,13 @@ class TapiWrapper(object):
                                           database="vimregistry")
             cursor = connection.cursor()
             LOG.debug(f"Removing {db_endpoints} from vimregistry to avoid duplicates")
-            query_delete = f"DELETE FROM vim WHERE vendor = 'endpoint' AND uuid in {db_endpoints}"
+            query_delete = f"DELETE FROM vim WHERE vendor = 'endpoint' AND uuid in {tuple(db_endpoints)}"
             LOG.debug(f'query_delete: {query_delete}')
             cursor.execute(query_delete)
             connection.commit()
             # GET VIM endpoints
             if sip_names:
-                query_names = f"SELECT uuid FROM vim WHERE vendor = 'endpoint' AND name in {sip_names}"
+                query_names = f"SELECT uuid FROM vim WHERE vendor = 'endpoint' AND name in {tuple(sip_names)}"
                 LOG.debug(f'query_names: {query_names}')
                 cursor.execute(query_names)
                 db_endpoints_by_name = cursor.fetchall()
