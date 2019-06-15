@@ -38,6 +38,8 @@ import threading
 import sys
 import concurrent.futures as pool
 import psycopg2
+import ipaddress
+import math
 
 from tapi_wrapper import messaging as messaging
 from tapi_wrapper import tapi_helpers as tools
@@ -154,9 +156,12 @@ class TapiWrapper(object):
         wim_list = self.get_wims_setup()
         associated_endpoints = []
         new_endpoints = []
+        self.wtapi_ledger['router_cs_registry'] = []
+        self.wtapi_ledger['management_cs_registry'] = []
         for wim in wim_list:
             LOG.debug(f'Inserting {wim} sips into IADB')
-            sip_inv = self.engine.get_sip_inventory(':'.join([wim[2], '8182']))
+            wim_host = ':'.join([wim[2], '8182'])
+            sip_inv = self.engine.get_sip_inventory(wim_host)
             vim_inv = self.get_vims_setup()
             old_endpoints = self.clean_wim_old_attachments(wim[0])
             sip_name_list = [
@@ -178,6 +183,65 @@ class TapiWrapper(object):
                         'vim_endpoint': vim_match[2],
                         'wim_uuid': wim[0]
                     })
+                    management_registry = {
+                        'wim': wim_host,
+                        'vim': vim_match[0],
+                        'subnets': []
+                    }
+                    # TODO: Check if management_flow_ip are present in configuration field
+                    if 'management_flow_ip' in vim_match[3] and 'floating_ip_ranging' in vim_match[3]:
+                        management_flow = {
+                            'management_flow_ip': vim_match[3]['management_flow_ip'],
+                            'floating_ip_ranging': vim_match[3]['floating_ip_ranging'],
+                        }
+                        platform_sip = [
+                            sip for sip in sip_inv for name in sip['name']
+                            if name['value-name'] == 'public-type' and name['value'] == 'SP-MANO-CSE'
+                        ].pop()
+                        # process floating_ip_ranging
+                        floating_subnets = []
+                        for ip_range in management_flow['floating_ip_ranging'].split(','):
+                            ip_tokens = ip_range.split('-')
+                            floating_subnets.extend(self.tokenize_subnet_range(ip_tokens[0], ip_tokens[1]))
+                        for subnet in floating_subnets:
+                            management_cs = [
+                                self.engine.generate_cs_from_nap_pair(
+                                    '/'.join([vim_match[3]['management_flow_ip'], '32']),
+                                    subnet,
+                                    platform_sip['uuid'], sip['uuid'],
+                                    layer='MPLS', direction='UNIDIRECTIONAL'
+                                ),
+                                self.engine.generate_cs_from_nap_pair(
+                                    subnet,
+                                    '/'.join([vim_match[3]['management_flow_ip'], '32']),
+                                    sip['uuid'], platform_sip['uuid'],
+                                    layer='MPLS', direction='UNIDIRECTIONAL'
+                                ),
+                                self.engine.generate_cs_from_nap_pair(
+                                    '/'.join([vim_match[3]['management_flow_ip'], '32']),
+                                    subnet,
+                                    platform_sip['uuid'], sip['uuid'],
+                                    layer='MPLS_ARP', direction='UNIDIRECTIONAL'
+                                ),
+                                self.engine.generate_cs_from_nap_pair(
+                                    subnet,
+                                    '/'.join([vim_match[3]['management_flow_ip'], '32']),
+                                    sip['uuid'], platform_sip['uuid'],
+                                    layer='MPLS_ARP', direction='UNIDIRECTIONAL'
+                                )
+                            ]
+                            self.engine.create_connectivity_service(wim_host, management_cs[0])
+                            self.engine.create_connectivity_service(wim_host, management_cs[1])
+                            self.engine.create_connectivity_service(wim_host, management_cs[2])
+                            self.engine.create_connectivity_service(wim_host, management_cs[3])
+                            subnet_registry = {
+                                'subnet': subnet,
+                                'cs_ref': [cs['uuid'] for cs in management_cs]
+                            }
+                            management_registry['subnets'].append(subnet_registry)
+                        self.wtapi_ledger['management_cs_registry'].append(management_registry)
+                        # router_ext_ip: A.B.C.D
+                        # management_flow_ip: A.B.C.D
                 elif not vim_match:
                     LOG.debug(f'Inserting new sip={sip_name}')
                     new_uuid = uuid.uuid4()
@@ -203,6 +267,24 @@ class TapiWrapper(object):
         LOG.debug(f'Associating WIM with corresponding endpoints in wimregisry: {associated_endpoints}')
         attached_endpoints = self.attach_wim_to_endpoints(associated_endpoints, inserted_endpoints)
         LOG.debug(f'New vim endpoints: {inserted_endpoints}, attached_endpoints: {attached_endpoints}')
+
+    def tokenize_subnet_range(self, start_ip, end_ip):
+        """
+        :param start_ip:
+        :param end_ip:
+        :return subnet matches:
+        """
+        ip_subnets_generator = ipaddress.summarize_address_range(
+            ipaddress.ip_address(start_ip), ipaddress.ip_address(end_ip)
+        )
+        ip_subnets_list = [str(ipnet) for ipnet in ip_subnets_generator]
+        # ip_num = int(ipaddress.ip_address(end_ip)) - int(ipaddress.ip_address(start_ip))
+        # addressing_space = math.ceil(math.log(ip_num, 2))
+        # subnet_address = ipaddress.ip_address(
+        #     int(ipaddress.ip_address(start_ip)) >> addressing_space << addressing_space)
+        # # TODO: be more restrictive on this net instead of taking the bigger one compatible
+        # return ipaddress.ip_network(str(subnet_address) + '/' + str(32-addressing_space))
+        return ip_subnets_list
 
     def check_sip_vim(self, sip, vim_inv):
         nfvi_pop_type = [
@@ -256,7 +338,7 @@ class TapiWrapper(object):
                                           port="5432",
                                           database="vimregistry")
             cursor = connection.cursor()
-            query = "SELECT uuid, name, endpoint FROM vim WHERE vendor IN ('Heat', 'heat', 'Mock', 'mock');"
+            query = "SELECT uuid, name, endpoint, configuration FROM vim WHERE vendor IN ('Heat', 'heat', 'Mock', 'mock');"
             LOG.debug(f'query: {query}')
             cursor.execute(query)
             vims = cursor.fetchall()
@@ -398,7 +480,7 @@ class TapiWrapper(object):
                                           port="5432",
                                           database="wimregistry")
             cursor = connection.cursor()
-            vim_uuids = "','".join([endpoint['vim_uuid'] for endpoint in endpoint_list])
+            # vim_uuids = "','".join([endpoint['vim_uuid'] for endpoint in endpoint_list])
             # safety_query = f"SELECT vim_uuid FROM attached_vim WHERE vim_uuid IN ('{vim_uuids}')"
             # cursor.execute(safety_query)
             # db_endpoints = set([e[0] for e in cursor.fetchall()])
@@ -675,7 +757,7 @@ class TapiWrapper(object):
                                           port="5432",
                                           database="vimregistry")
             cursor = connection.cursor()
-            query_ingress = f"SELECT name, type FROM vim WHERE uuid = '{ingress_endpoint_uuid}';"
+            query_ingress = f"SELECT name, type, configuration FROM vim WHERE uuid = '{ingress_endpoint_uuid}';"
             LOG.debug(f"query_ingress: {query_ingress}")
             cursor.execute(query_ingress)
             resp = cursor.fetchall()
@@ -683,7 +765,8 @@ class TapiWrapper(object):
             # TODO Check resp len || multiple wims for a vim?
             ingress_name = resp[0][0]  # Name is used to correlate with sips
             ingress_type = resp[0][1]
-            query_egress = f"SELECT name, type FROM vim WHERE uuid = '{egress_endpoint_uuid}';"
+            ingress_conf = resp[0][2]
+            query_egress = f"SELECT name, type, configuration FROM vim WHERE uuid = '{egress_endpoint_uuid}';"
             LOG.debug(f"query_egress: {query_egress}")
             cursor.execute(query_egress)
             resp = cursor.fetchall()
@@ -691,6 +774,7 @@ class TapiWrapper(object):
             # TODO Check resp len || multiple wims for a vim?
             egress_name = resp[0][0]
             egress_type = resp[0][1]
+            egress_conf = resp[0][2]
             if not (ingress_name or egress_name):
                 raise Exception('Both Ingress and Egress were not found in DB')
             elif not ingress_name:
@@ -699,8 +783,10 @@ class TapiWrapper(object):
                 raise Exception('Egress endpoint not found in DB')
             self.wtapi_ledger[virtual_link_uuid]['ingress']['name'] = ingress_name
             self.wtapi_ledger[virtual_link_uuid]['ingress']['type'] = ingress_type
+            self.wtapi_ledger[virtual_link_uuid]['ingress']['conf'] = ingress_conf
             self.wtapi_ledger[virtual_link_uuid]['egress']['name'] = egress_name
             self.wtapi_ledger[virtual_link_uuid]['egress']['type'] = egress_type
+            self.wtapi_ledger[virtual_link_uuid]['egress']['conf'] = egress_conf
             return {
                 'result': True,
                 'message': f'got ingress {ingress_name} and egress {egress_name} for {virtual_link_uuid}',
@@ -744,6 +830,41 @@ class TapiWrapper(object):
             'message': f'got ingress {ingress_name} and egress {egress_name} sip match for {virtual_link_uuid}',
             'error': None
         }
+
+    def check_router_connection(self, virtual_link_uuid):
+        if self.wtapi_ledger[virtual_link_uuid]['ingress']['type'] == 'endpoint' \
+                and self.wtapi_ledger[virtual_link_uuid]['egress']['conf']['router_ext_ip']:
+            client_endpoint_uuid = self.wtapi_ledger[virtual_link_uuid]['ingress']['location']
+            pop_uuid = self.wtapi_ledger[virtual_link_uuid]['egress']['location']
+        elif self.wtapi_ledger[virtual_link_uuid]['egress']['type'] == 'endpoint' \
+                and self.wtapi_ledger[virtual_link_uuid]['ingress']['conf']['router_ext_ip']:
+            client_endpoint_uuid = self.wtapi_ledger[virtual_link_uuid]['egress']['location']
+            pop_uuid = self.wtapi_ledger[virtual_link_uuid]['ingress']['location']
+        elif self.wtapi_ledger[virtual_link_uuid]['ingress']['conf']['router_ext_ip'] \
+                and self.wtapi_ledger[virtual_link_uuid]['egress']['conf']['router_ext_ip']:
+            # TODO: implement multi-NFVI-PoP router flow
+            LOG.warning('No client endpoint found, both endpoints are NFVI-PoPs, '
+                            'multi-vim wan provisioning not implemented yet')
+            return
+        else:
+            LOG.info('No virtual router in NFVI-PoP')
+            return
+        for entry in self.wtapi_ledger['router_cs_registry']:
+            if client_endpoint_uuid == entry['client_endpoint_uuid'] and pop_uuid == entry['pop_uuid']:
+                LOG.debug(f"Virtual router connectivity already provisioned for "
+                          f"{self.wtapi_ledger[virtual_link_uuid]['ingress']['location']} "
+                          f"and {self.wtapi_ledger[virtual_link_uuid]['egress']['location']}")
+                self.wtapi_ledger[virtual_link_uuid]['router_flow_operational'] = True
+                return
+
+        # If code reaches this point, there's no client-pop routing cs - creation is needed
+        self.wtapi_ledger[virtual_link_uuid]['router_flow_creation'] = True
+        self.wtapi_ledger['router_cs_registry'].append({
+            'client_endpoint_uuid': client_endpoint_uuid,
+            'pop_uuid': pop_uuid,
+            'associated_cs': [],
+            'routing_cs': [],
+        })
 
     def virtual_links_create(self, virtual_link_uuid):
         """
@@ -805,12 +926,121 @@ class TapiWrapper(object):
                 layer='MPLS_ARP', direction='UNIDIRECTIONAL',
                 requested_capacity=requested_capacity, latency=requested_latency),
         ]
+        if self.wtapi_ledger[virtual_link_uuid]['router_flow_creation'] \
+                and self.wtapi_ledger[virtual_link_uuid]['egress']['conf']['router_ext_ip'] \
+                and self.wtapi_ledger[virtual_link_uuid]['ingress']['type'] == 'endpoint':
+            self.wtapi_ledger[virtual_link_uuid]['router_flow_operational'] = True
+            router_connectivity_services = [
+                self.engine.generate_cs_from_nap_pair(
+                    ingress_nap, self.wtapi_ledger[virtual_link_uuid]['egress']['conf']['router_ext_ip'],
+                    ingress_sip_uuid, egress_sip_uuid,
+                    layer='MPLS', direction='UNIDIRECTIONAL'),
+                self.engine.generate_cs_from_nap_pair(
+                    self.wtapi_ledger[virtual_link_uuid]['egress']['conf']['router_ext_ip'], ingress_nap,
+                    egress_sip_uuid, ingress_sip_uuid,
+                    layer='MPLS', direction='UNIDIRECTIONAL'),
+                self.engine.generate_cs_from_nap_pair(
+                    ingress_nap, self.wtapi_ledger[virtual_link_uuid]['egress']['conf']['router_ext_ip'],
+                    ingress_sip_uuid, egress_sip_uuid,
+                    layer='MPLS_ARP', direction='UNIDIRECTIONAL'),
+                self.engine.generate_cs_from_nap_pair(
+                    self.wtapi_ledger[virtual_link_uuid]['egress']['conf']['router_ext_ip'], ingress_nap,
+                    egress_sip_uuid, ingress_sip_uuid,
+                    layer='MPLS_ARP', direction='UNIDIRECTIONAL'),
+            ]
+        elif self.wtapi_ledger[virtual_link_uuid]['router_flow_creation'] \
+                and self.wtapi_ledger[virtual_link_uuid]['ingress']['conf']['router_ext_ip'] \
+                and self.wtapi_ledger[virtual_link_uuid]['egress']['type'] == 'endpoint':
+            self.wtapi_ledger[virtual_link_uuid]['router_flow_operational'] = True
+            router_connectivity_services = [
+            self.engine.generate_cs_from_nap_pair(
+                self.wtapi_ledger[virtual_link_uuid]['ingress']['conf']['router_ext_ip'], egress_nap,
+                ingress_sip_uuid, egress_sip_uuid,
+                layer='MPLS', direction='UNIDIRECTIONAL'),
+            self.engine.generate_cs_from_nap_pair(
+                egress_nap, self.wtapi_ledger[virtual_link_uuid]['ingress']['conf']['router_ext_ip'],
+                egress_sip_uuid, ingress_sip_uuid,
+                layer='MPLS', direction='UNIDIRECTIONAL'),
+            self.engine.generate_cs_from_nap_pair(
+                self.wtapi_ledger[virtual_link_uuid]['ingress']['conf']['router_ext_ip'], egress_nap,
+                ingress_sip_uuid, egress_sip_uuid,
+                layer='MPLS_ARP', direction='UNIDIRECTIONAL'),
+            self.engine.generate_cs_from_nap_pair(
+                egress_nap, self.wtapi_ledger[virtual_link_uuid]['ingress']['conf']['router_ext_ip'],
+                egress_sip_uuid, ingress_sip_uuid,
+                layer='MPLS_ARP', direction='UNIDIRECTIONAL'),
+        ]
+        elif self.wtapi_ledger[virtual_link_uuid]['router_flow_creation'] \
+                and self.wtapi_ledger[virtual_link_uuid]['ingress']['conf']['router_ext_ip'] \
+                and self.wtapi_ledger[virtual_link_uuid]['egress']['conf']['router_ext_ip']:
+            self.wtapi_ledger[virtual_link_uuid]['router_flow_operational'] = True
+            LOG.warning(f'MSCS not implemented yet in the wrapper')
+            # RouterA<->RouterB, VNFA<->RouterB RouterA<->VNFB, tests needed before implementing
+            router_connectivity_services = []
+            #     router_connectivity_services = [
+            #     self.engine.generate_cs_from_nap_pair(
+            #         self.wtapi_ledger[virtual_link_uuid]['ingress']['conf']['router_ext_ip'], egress_nap,
+            #         ingress_sip_uuid, egress_sip_uuid,
+            #         layer='MPLS', direction='UNIDIRECTIONAL'),
+            #     self.engine.generate_cs_from_nap_pair(
+            #         egress_nap, self.wtapi_ledger[virtual_link_uuid]['ingress']['conf']['router_ext_ip'],
+            #         egress_sip_uuid, ingress_sip_uuid,
+            #         layer='MPLS', direction='UNIDIRECTIONAL'),
+            #     self.engine.generate_cs_from_nap_pair(
+            #         self.wtapi_ledger[virtual_link_uuid]['ingress']['conf']['router_ext_ip'], egress_nap,
+            #         ingress_sip_uuid, egress_sip_uuid,
+            #         layer='MPLS_ARP', direction='UNIDIRECTIONAL'),
+            #     self.engine.generate_cs_from_nap_pair(
+            #         egress_nap, self.wtapi_ledger[virtual_link_uuid]['ingress']['conf']['router_ext_ip'],
+            #         egress_sip_uuid, ingress_sip_uuid,
+            #         layer='MPLS_ARP', direction='UNIDIRECTIONAL'),
+            # ]
+        else:
+            router_connectivity_services = []
+
+        for connectivity_service in router_connectivity_services:
+            try:
+                self.engine.create_connectivity_service(wim_host, connectivity_service)
+                if self.wtapi_ledger[virtual_link_uuid]['ingress']['type'] == 'endpoint' \
+                        and self.wtapi_ledger[virtual_link_uuid]['router_flow_operational']:
+                    idx = next((index for (index, d) in enumerate(self.wtapi_ledger['router_cs_registry'])
+                                if d["client_endpoint_uuid"] == self.wtapi_ledger[virtual_link_uuid]['ingress']['location']
+                                and d["pop_uuid"] == self.wtapi_ledger[virtual_link_uuid]['egress']['location']), None)
+                    self.wtapi_ledger['router_cs_registry'][idx]['routing_cs'].append(connectivity_service['uuid'])
+                elif self.wtapi_ledger[virtual_link_uuid]['egress']['type'] == 'endpoint' \
+                        and self.wtapi_ledger[virtual_link_uuid]['router_flow_operational']:
+                    idx = next((index for (index, d) in enumerate(self.wtapi_ledger['router_cs_registry'])
+                                if d["client_endpoint_uuid"] == self.wtapi_ledger[virtual_link_uuid]['egress']['location']
+                                and d["pop_uuid"] == self.wtapi_ledger[virtual_link_uuid]['ingress']['location']), None)
+                    self.wtapi_ledger['router_cs_registry'][idx]['routing_cs'].append(connectivity_service['uuid'])
+                else:
+                    # TODO: this is mscs flow
+                    pass
+
+            except Exception as exc:
+                LOG.error(f'{connectivity_service["uuid"]} generated an exception: {exc}')
 
         for connectivity_service in connectivity_services:
             try:
                 self.engine.create_connectivity_service(wim_host, connectivity_service)
                 self.wtapi_ledger[virtual_link_uuid]['active_connectivity_services'].append(
                     connectivity_service['uuid'])
+                if self.wtapi_ledger[virtual_link_uuid]['ingress']['type'] == 'endpoint' \
+                        and self.wtapi_ledger[virtual_link_uuid]['router_flow_operational']:
+                    idx = next((index for (index, d) in enumerate(self.wtapi_ledger['router_cs_registry'])
+                                if d["client_endpoint_uuid"] == self.wtapi_ledger[virtual_link_uuid]['ingress']['location']
+                                and d["pop_uuid"] == self.wtapi_ledger[virtual_link_uuid]['egress']['location']), None)
+                    self.wtapi_ledger['router_cs_registry'][idx]['associated_cs'].append(connectivity_service['uuid'])
+                elif self.wtapi_ledger[virtual_link_uuid]['egress']['type'] == 'endpoint' \
+                        and self.wtapi_ledger[virtual_link_uuid]['router_flow_operational']:
+                    idx = next((index for (index, d) in enumerate(self.wtapi_ledger['router_cs_registry'])
+                                if d["client_endpoint_uuid"] == self.wtapi_ledger[virtual_link_uuid]['egress']['location']
+                                and d["pop_uuid"] == self.wtapi_ledger[virtual_link_uuid]['ingress']['location']), None)
+                    self.wtapi_ledger['router_cs_registry'][idx]['associated_cs'].append(connectivity_service['uuid'])
+                else:
+                    # TODO: this is mscs flow
+                    pass
+
 
             except Exception as exc:
                 LOG.error(f'{connectivity_service["uuid"]} generated an exception: {exc}')
@@ -868,11 +1098,39 @@ class TapiWrapper(object):
         for cs in conn_services_to_remove:
             self.engine.remove_connectivity_service(cs['wim_host'], cs['cs_uuid'])
             vl_removed.update([cs['vl_uuid']])
+            # If it was associated with a router aggregation, remove linkage
+            if self.wtapi_ledger[virtual_link_uuid]['ingress']['type'] == 'endpoint' \
+                    and self.wtapi_ledger[virtual_link_uuid]['router_flow_operational']:
+                router_aggreg_idx = next((index for (index, d) in enumerate(self.wtapi_ledger['router_cs_registry'])
+                            if d["client_endpoint_uuid"] == self.wtapi_ledger[virtual_link_uuid]['ingress']['location']
+                            and d["pop_uuid"] == self.wtapi_ledger[virtual_link_uuid]['egress']['location']), None)
+                del self.wtapi_ledger['router_cs_registry'][router_aggreg_idx]['associated_cs'][
+                    self.wtapi_ledger['router_cs_registry'][router_aggreg_idx]['associated_cs'].index(cs['uuid'])]
+                if not self.wtapi_ledger['router_cs_registry'][router_aggreg_idx]['associated_cs']:
+                    for router_cs_uuid in self.wtapi_ledger['router_cs_registry'][router_aggreg_idx]['routing_cs']:
+                        self.engine.remove_connectivity_service(cs['wim_host'], router_cs_uuid)
+                    del self.wtapi_ledger['router_cs_registry'][router_aggreg_idx]
+            elif self.wtapi_ledger[virtual_link_uuid]['egress']['type'] == 'endpoint' \
+                    and self.wtapi_ledger[virtual_link_uuid]['router_flow_operational']:
+                router_aggreg_idx = next((index for (index, d) in enumerate(self.wtapi_ledger['router_cs_registry'])
+                            if d["client_endpoint_uuid"] == self.wtapi_ledger[virtual_link_uuid]['egress']['location']
+                            and d["pop_uuid"] == self.wtapi_ledger[virtual_link_uuid]['ingress']['location']), None)
+                del self.wtapi_ledger['router_cs_registry'][router_aggreg_idx]['associated_cs'][
+                    self.wtapi_ledger['router_cs_registry'][router_aggreg_idx]['associated_cs'].index(cs['uuid'])]
+                if not self.wtapi_ledger['router_cs_registry'][router_aggreg_idx]['associated_cs']:
+                    for router_cs_uuid in self.wtapi_ledger['router_cs_registry'][router_aggreg_idx]['routing_cs']:
+                        self.engine.remove_connectivity_service(cs['wim_host'], router_cs_uuid)
+                    del self.wtapi_ledger['router_cs_registry'][router_aggreg_idx]
+            else:
+                # TODO: this is mscs flow
+                pass
+
 
         for vl_uuid in vl_removed:
             self.wtapi_ledger[vl_uuid]['active_connectivity_services'] = []
 
         LOG.debug(f'Virtual Links removed: {vl_removed}')
+        # TODO: remove router link references if its router_type and check if router cs has to be removed
 
         # for cs in conn_services_to_remove:
         #     self.engine.remove_connectivity_service(wim_host, cs['cs_uuid'])
@@ -951,11 +1209,15 @@ class TapiWrapper(object):
         virtual_link_uuid = str(uuid.uuid4())
         service_instance_id = message['service_instance_id']
 
+        # TODO: check if router_ext_ip: A.B.C.D connection is necesary for this endpoint (after endpoints info)
+
+        # self.wtapi_ledger['router_cs_registry']
         # Schedule the tasks that the Wrapper should do for this request.
         schedule = [
             'get_wim_info',
             'get_endpoints_info',
             'match_endpoints_with_sips',
+            'check_router_connection',
             'virtual_links_create',
             'insert_reference_database',
             'respond_to_request'
@@ -980,6 +1242,8 @@ class TapiWrapper(object):
                 'error': None,
                 'message': None,
                 'kill_service': False,
+                'router_flow_creation': False,
+                'router_flow_operational': False,
                 'schedule': schedule,
                 'topic': properties.reply_to,
             }
@@ -1074,6 +1338,12 @@ class TapiWrapper(object):
 
     def wan_list_capabilites(self, ch, method, properties, payload):
         """
+        Retrieve a list of the WIMs registered to the IA.
+
+        topic: infrastructure.management.wan.list
+        data: null
+        return: [{uuid: String, name: String, attached_vims: [Strings], attached_endpoints: [Strings]}, qos: [{node_1: String, node_2: String, latency: int: latency_unit: String, bandwidth: int, bandwidth_unit: String}]], when exist an error, request_status is "ERROR", message field carries a string with the error message and the other fields are empty.
+
 
         :param ch:
         :param method:
