@@ -202,7 +202,8 @@ class TapiWrapper(object):
                         floating_subnets = []
                         for ip_range in management_flow['floating_ip_ranging'].split(','):
                             ip_tokens = ip_range.split('-')
-                            floating_subnets.extend(self.tokenize_subnet_range(ip_tokens[0], ip_tokens[1]))
+                            floating_subnets.extend(
+                                self.tokenize_subnet_range(ip_tokens[0].strip(), ip_tokens[1].strip()))
                         for subnet in floating_subnets:
                             management_cs = [
                                 self.engine.generate_cs_from_nap_pair(
@@ -365,10 +366,11 @@ class TapiWrapper(object):
                                           database="vimregistry")
             cursor = connection.cursor()
             LOG.debug(f"Removing {db_endpoints} from vimregistry to avoid duplicates")
-            query_delete = f"DELETE FROM vim WHERE vendor = 'endpoint' AND uuid in {tuple(db_endpoints)}"
-            LOG.debug(f'query_delete: {query_delete}')
-            cursor.execute(query_delete)
-            connection.commit()
+            if db_endpoints:
+                query_delete = f"DELETE FROM vim WHERE vendor = 'endpoint' AND uuid in {tuple(db_endpoints)}"
+                LOG.debug(f'query_delete: {query_delete}')
+                cursor.execute(query_delete)
+                connection.commit()
             # GET VIM endpoints
             if sip_names:
                 query_names = f"SELECT uuid FROM vim WHERE vendor = 'endpoint' AND name in {tuple(sip_names)}"
