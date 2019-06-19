@@ -891,8 +891,8 @@ class TapiWrapper(object):
             egress_nap = '/'.join([self.wtapi_ledger[virtual_link_uuid]['egress']['nap'], '32'])
         egress_sip_uuid = self.wtapi_ledger[virtual_link_uuid]['egress']['sip']
         if 'qos' in self.wtapi_ledger[virtual_link_uuid] and self.wtapi_ledger[virtual_link_uuid]['qos']:
-            if 'bandwidth' in self.wtapi_ledger[virtual_link_uuid]['qos']:
-                requested_capacity = float(self.wtapi_ledger[virtual_link_uuid]['qos']['bandwidth']) * 1e6
+            if 'minimum_bandwidth' in self.wtapi_ledger[virtual_link_uuid]['qos']:
+                requested_capacity = float(self.wtapi_ledger[virtual_link_uuid]['qos']['minimum_bandwidth']['bandwidth']) * 1e6
             else:
                 requested_capacity = 1.5e9
             if 'latency' in self.wtapi_ledger[virtual_link_uuid]['qos']:
@@ -1108,7 +1108,7 @@ class TapiWrapper(object):
                             if d["client_endpoint_uuid"] == self.wtapi_ledger[virtual_link_uuid]['ingress']['location']
                             and d["pop_uuid"] == self.wtapi_ledger[virtual_link_uuid]['egress']['location']), None)
                 del self.aux_wtapi_ledger['router_cs_registry'][router_aggreg_idx]['associated_cs'][
-                    self.aux_wtapi_ledger['router_cs_registry'][router_aggreg_idx]['associated_cs'].index(cs['uuid'])]
+                    self.aux_wtapi_ledger['router_cs_registry'][router_aggreg_idx]['associated_cs'].index(cs['cs_uuid'])]
                 if not self.aux_wtapi_ledger['router_cs_registry'][router_aggreg_idx]['associated_cs']:
                     for router_cs_uuid in self.aux_wtapi_ledger['router_cs_registry'][router_aggreg_idx]['routing_cs']:
                         self.engine.remove_connectivity_service(cs['wim_host'], router_cs_uuid)
@@ -1119,7 +1119,7 @@ class TapiWrapper(object):
                             if d["client_endpoint_uuid"] == self.wtapi_ledger[virtual_link_uuid]['egress']['location']
                             and d["pop_uuid"] == self.wtapi_ledger[virtual_link_uuid]['ingress']['location']), None)
                 del self.aux_wtapi_ledger['router_cs_registry'][router_aggreg_idx]['associated_cs'][
-                    self.aux_wtapi_ledger['router_cs_registry'][router_aggreg_idx]['associated_cs'].index(cs['uuid'])]
+                    self.aux_wtapi_ledger['router_cs_registry'][router_aggreg_idx]['associated_cs'].index(cs['cs_uuid'])]
                 if not self.aux_wtapi_ledger['router_cs_registry'][router_aggreg_idx]['associated_cs']:
                     for router_cs_uuid in self.aux_wtapi_ledger['router_cs_registry'][router_aggreg_idx]['routing_cs']:
                         self.engine.remove_connectivity_service(cs['wim_host'], router_cs_uuid)
