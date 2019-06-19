@@ -1308,7 +1308,7 @@ class TapiWrapper(object):
         service_instance_id = message['service_instance_id']
 
         virtual_link_uuid_list = [
-            self.wtapi_ledger[virtual_link]['uuid'] for virtual_link in self.wtapi_ledger
+            self.wtapi_ledger[virtual_link]['uuid'] for virtual_link in self.wtapi_ledger.keys()
             if self.wtapi_ledger[virtual_link]['vl_id'] == message['vl_id'] and
                 self.wtapi_ledger[virtual_link]['service_uuid'] == service_instance_id
         ]
