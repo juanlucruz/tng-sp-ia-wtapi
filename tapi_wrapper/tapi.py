@@ -1100,6 +1100,7 @@ class TapiWrapper(object):
         vl_removed = set()
         for cs in conn_services_to_remove:
             self.engine.remove_connectivity_service(cs['wim_host'], cs['cs_uuid'])
+            LOG.debug(f'router_cs_registry: {self.aux_wtapi_ledger["router_cs_registry"]}')
             vl_removed.update([cs['vl_uuid']])
             # If it was associated with a router aggregation, remove linkage
             if self.wtapi_ledger[virtual_link_uuid]['ingress']['type'] == 'endpoint' \
@@ -1127,6 +1128,7 @@ class TapiWrapper(object):
             else:
                 # TODO: this is mscs flow
                 pass
+
 
 
         for vl_uuid in vl_removed:
