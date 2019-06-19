@@ -39,7 +39,7 @@ import sys
 import concurrent.futures as pool
 import psycopg2
 import ipaddress
-import math
+import traceback
 
 from tapi_wrapper import messaging as messaging
 from tapi_wrapper import tapi_helpers as tools
@@ -1004,6 +1004,7 @@ class TapiWrapper(object):
         for connectivity_service in router_connectivity_services:
             try:
                 self.engine.create_connectivity_service(wim_host, connectivity_service)
+                LOG.debug(f'router_registry: {self.aux_wtapi_ledger["router_cs_registry"]}')
                 if self.wtapi_ledger[virtual_link_uuid]['ingress']['type'] == 'endpoint' \
                         and self.wtapi_ledger[virtual_link_uuid]['router_flow_operational']:
                     idx = next((index for (index, d) in enumerate(self.aux_wtapi_ledger['router_cs_registry'])
@@ -1021,7 +1022,8 @@ class TapiWrapper(object):
                     pass
 
             except Exception as exc:
-                LOG.error(f'{connectivity_service["uuid"]} generated an exception: {exc}')
+                tb = "".join(traceback.format_exc().split("\n"))
+                LOG.error(f'{connectivity_service["uuid"]} generated an exception: {tb}')
 
         for connectivity_service in connectivity_services:
             try:
