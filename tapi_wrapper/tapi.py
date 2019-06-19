@@ -1180,6 +1180,9 @@ class TapiWrapper(object):
                                  yaml.dump(response),
                                  correlation_id=properties.correlation_id)
 
+        LOG.debug(f'LEDGER_DEBUG: {self.wtapi_ledger}')
+        LOG.debug(f'AUX_LEDGER_DEBUG: {self.aux_wtapi_ledger}')
+
         # Don't trigger on self created messages
         if self.name == properties.app_id:
             return
@@ -1285,6 +1288,9 @@ class TapiWrapper(object):
             self.manoconn.notify(topics.WAN_DECONFIGURE,
                                  yaml.dump(response),
                                  correlation_id=properties.correlation_id)
+
+        LOG.debug(f'LEDGER_DEBUG: {self.wtapi_ledger}')
+        LOG.debug(f'AUX_LEDGER_DEBUG: {self.aux_wtapi_ledger}')
 
         # Don't trigger on self created messages
         if self.name == properties.app_id:
