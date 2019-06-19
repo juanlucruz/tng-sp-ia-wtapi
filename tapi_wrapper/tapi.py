@@ -1180,8 +1180,8 @@ class TapiWrapper(object):
                                  yaml.dump(response),
                                  correlation_id=properties.correlation_id)
 
-        LOG.debug(f'LEDGER_DEBUG: {self.wtapi_ledger}')
-        LOG.debug(f'AUX_LEDGER_DEBUG: {self.aux_wtapi_ledger}')
+        LOG.debug(f'CONF_LEDGER_DEBUG: {self.wtapi_ledger}')
+        LOG.debug(f'CONF_AUX_LEDGER_DEBUG: {self.aux_wtapi_ledger}')
 
         # Don't trigger on self created messages
         if self.name == properties.app_id:
@@ -1289,8 +1289,8 @@ class TapiWrapper(object):
                                  yaml.dump(response),
                                  correlation_id=properties.correlation_id)
 
-        LOG.debug(f'LEDGER_DEBUG: {self.wtapi_ledger}')
-        LOG.debug(f'AUX_LEDGER_DEBUG: {self.aux_wtapi_ledger}')
+        LOG.debug(f'DECONF_LEDGER_DEBUG: {self.wtapi_ledger}')
+        LOG.debug(f'DECONF_AUX_LEDGER_DEBUG: {self.aux_wtapi_ledger}')
 
         # Don't trigger on self created messages
         if self.name == properties.app_id:
@@ -1401,7 +1401,8 @@ class TapiWrapper(object):
         """
         This method creates a response message for the sender of requests.
         """
-
+        LOG.debug(f'FINAL_LEDGER_DEBUG: {self.wtapi_ledger}')
+        LOG.debug(f'FINAL_AUX_LEDGER_DEBUG: {self.aux_wtapi_ledger}')
         if self.wtapi_ledger[virtual_link_uuid]['error'] is None \
                 and self.wtapi_ledger[virtual_link_uuid]['message'] is None:
             message = {
