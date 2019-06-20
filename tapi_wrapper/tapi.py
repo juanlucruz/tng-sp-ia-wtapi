@@ -703,7 +703,10 @@ class TapiWrapper(object):
                       f'{self.wtapi_ledger[virtual_link_uuid]["active_connectivity_services"]}')
             raise ValueError('There are still active connectivity services')
         else:
+            LOG.debug(f'VL {virtual_link_uuid} removed from LOCAL DB')
+            LOG.debug(f'LEDGER_DEBUG_BEFORE:{self.wtapi_ledger.keys()}')
             del self.wtapi_ledger[virtual_link_uuid]
+            LOG.debug(f'LEDGER_DEBUG_AFTER:{self.wtapi_ledger.keys()}')
 
     def get_wim_info(self, virtual_link_uuid):
         """
