@@ -1106,22 +1106,22 @@ class TapiWrapper(object):
                 LOG.debug(f'cs: {cs}; router_cs_registry: {self.aux_wtapi_ledger["router_cs_registry"]}')
                 vl_removed.update([cs['vl_uuid']])
                 # If it was associated with a router aggregation, remove linkage
-                if self.wtapi_ledger[virtual_link_uuid]['ingress']['type'] == 'endpoint' \
-                        and self.wtapi_ledger[virtual_link_uuid]['router_flow_operational']:
+                if self.wtapi_ledger['vl_uuid']['ingress']['type'] == 'endpoint' \
+                        and self.wtapi_ledger['vl_uuid']['router_flow_operational']:
                     router_aggreg_idx = next((index for (index, d) in enumerate(self.aux_wtapi_ledger['router_cs_registry'])
-                                if d["client_endpoint_uuid"] == self.wtapi_ledger[virtual_link_uuid]['ingress']['location']
-                                and d["pop_uuid"] == self.wtapi_ledger[virtual_link_uuid]['egress']['location']), None)
+                                if d["client_endpoint_uuid"] == self.wtapi_ledger['vl_uuid']['ingress']['location']
+                                and d["pop_uuid"] == self.wtapi_ledger['vl_uuid']['egress']['location']), None)
                     del self.aux_wtapi_ledger['router_cs_registry'][router_aggreg_idx]['associated_cs'][
                         self.aux_wtapi_ledger['router_cs_registry'][router_aggreg_idx]['associated_cs'].index(cs['cs_uuid'])]
                     if not self.aux_wtapi_ledger['router_cs_registry'][router_aggreg_idx]['associated_cs']:
                         for router_cs_uuid in self.aux_wtapi_ledger['router_cs_registry'][router_aggreg_idx]['routing_cs']:
                             self.engine.remove_connectivity_service(cs['wim_host'], router_cs_uuid)
                         del self.aux_wtapi_ledger['router_cs_registry'][router_aggreg_idx]
-                elif self.wtapi_ledger[virtual_link_uuid]['egress']['type'] == 'endpoint' \
-                        and self.wtapi_ledger[virtual_link_uuid]['router_flow_operational']:
+                elif self.wtapi_ledger['vl_uuid']['egress']['type'] == 'endpoint' \
+                        and self.wtapi_ledger['vl_uuid']['router_flow_operational']:
                     router_aggreg_idx = next((index for (index, d) in enumerate(self.aux_wtapi_ledger['router_cs_registry'])
-                                if d["client_endpoint_uuid"] == self.wtapi_ledger[virtual_link_uuid]['egress']['location']
-                                and d["pop_uuid"] == self.wtapi_ledger[virtual_link_uuid]['ingress']['location']), None)
+                                if d["client_endpoint_uuid"] == self.wtapi_ledger['vl_uuid']['egress']['location']
+                                and d["pop_uuid"] == self.wtapi_ledger['vl_uuid']['ingress']['location']), None)
                     del self.aux_wtapi_ledger['router_cs_registry'][router_aggreg_idx]['associated_cs'][
                         self.aux_wtapi_ledger['router_cs_registry'][router_aggreg_idx]['associated_cs'].index(cs['cs_uuid'])]
                     if not self.aux_wtapi_ledger['router_cs_registry'][router_aggreg_idx]['associated_cs']:
