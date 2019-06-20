@@ -1010,7 +1010,7 @@ class TapiWrapper(object):
                     idx = next((index for (index, d) in enumerate(self.aux_wtapi_ledger['router_cs_registry'])
                                 if d["client_endpoint_uuid"] == self.wtapi_ledger[virtual_link_uuid]['ingress']['location']
                                 and d["pop_uuid"] == self.wtapi_ledger[virtual_link_uuid]['egress']['location']), None)
-                    self.aux_wtapi_ledger[idx]['routing_cs'].append(connectivity_service['uuid'])
+                    self.aux_wtapi_ledger['router_cs_registry'][idx]['routing_cs'].append(connectivity_service['uuid'])
                 elif self.wtapi_ledger[virtual_link_uuid]['egress']['type'] == 'endpoint' \
                         and self.wtapi_ledger[virtual_link_uuid]['router_flow_operational']:
                     idx = next((index for (index, d) in enumerate(self.aux_wtapi_ledger['router_cs_registry'])
