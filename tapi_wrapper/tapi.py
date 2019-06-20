@@ -574,6 +574,8 @@ class TapiWrapper(object):
                         self.clean_ledger(vl)
                         LOG.info(f"Connectivity service group {vl} terminated")
                 LOG.info(f"Virtual link #{virtual_link_uuid} of Network Service #{ns_uuid}: Schedule finished")
+                LOG.debug(f'FINAL_LEDGER_DEBUG: {self.wtapi_ledger}')
+                LOG.debug(f'FINAL_AUX_LEDGER_DEBUG: {self.aux_wtapi_ledger}')
                 return virtual_link_uuid
         except Exception as e:
             self.wtapi_ledger[virtual_link_uuid]['schedule'] = []
@@ -703,10 +705,8 @@ class TapiWrapper(object):
                       f'{self.wtapi_ledger[virtual_link_uuid]["active_connectivity_services"]}')
             raise ValueError('There are still active connectivity services')
         else:
-            LOG.debug(f'VL {virtual_link_uuid} removed from LOCAL DB')
-            LOG.debug(f'LEDGER_DEBUG_BEFORE:{self.wtapi_ledger.keys()}')
             del self.wtapi_ledger[virtual_link_uuid]
-            LOG.debug(f'LEDGER_DEBUG_AFTER:{self.wtapi_ledger.keys()}')
+            LOG.debug(f'VL {virtual_link_uuid} removed from LOCAL DB')
 
     def get_wim_info(self, virtual_link_uuid):
         """
@@ -1410,8 +1410,6 @@ class TapiWrapper(object):
         """
         This method creates a response message for the sender of requests.
         """
-        LOG.debug(f'FINAL_LEDGER_DEBUG: {self.wtapi_ledger}')
-        LOG.debug(f'FINAL_AUX_LEDGER_DEBUG: {self.aux_wtapi_ledger}')
         if self.wtapi_ledger[virtual_link_uuid]['error'] is None \
                 and self.wtapi_ledger[virtual_link_uuid]['message'] is None:
             message = {
