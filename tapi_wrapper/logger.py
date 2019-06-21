@@ -147,7 +147,7 @@ class TangoJsonLogHandler(logging.StreamHandler):
         d = {
             # TANGO default fields
             "type": record.levelname[0],
-            "timestamp": "{} UTC".format(record.asctime),
+            "timestamp": "{} UTC".format(record.__dict__.get("asctime", datetime.datetime.utcnow())),
             "start_stop": record.__dict__.get("start_stop", ""),
             "component": record.name,
             "operation": record.__dict__.get("operation", record.funcName),
