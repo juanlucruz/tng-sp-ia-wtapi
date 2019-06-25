@@ -839,15 +839,15 @@ class TapiWrapper(object):
 
     def check_router_connection(self, virtual_link_uuid):
         if self.wtapi_ledger[virtual_link_uuid]['ingress']['type'] == 'endpoint' \
-                and self.wtapi_ledger[virtual_link_uuid]['egress']['conf']['router_ext_ip']:
+                and self.wtapi_ledger[virtual_link_uuid]['egress']['conf'].get('router_ext_ip'):
             client_endpoint_uuid = self.wtapi_ledger[virtual_link_uuid]['ingress']['location']
             pop_uuid = self.wtapi_ledger[virtual_link_uuid]['egress']['location']
         elif self.wtapi_ledger[virtual_link_uuid]['egress']['type'] == 'endpoint' \
-                and self.wtapi_ledger[virtual_link_uuid]['ingress']['conf']['router_ext_ip']:
+                and self.wtapi_ledger[virtual_link_uuid]['ingress']['conf'].get('router_ext_ip'):
             client_endpoint_uuid = self.wtapi_ledger[virtual_link_uuid]['egress']['location']
             pop_uuid = self.wtapi_ledger[virtual_link_uuid]['ingress']['location']
-        elif self.wtapi_ledger[virtual_link_uuid]['ingress']['conf']['router_ext_ip'] \
-                and self.wtapi_ledger[virtual_link_uuid]['egress']['conf']['router_ext_ip']:
+        elif self.wtapi_ledger[virtual_link_uuid]['ingress']['conf'].get('router_ext_ip') \
+                and self.wtapi_ledger[virtual_link_uuid]['egress']['conf'].get('router_ext_ip'):
             # TODO: implement multi-NFVI-PoP router flow
             LOG.warning('No client endpoint found, both endpoints are NFVI-PoPs, '
                             'multi-vim wan provisioning not implemented yet')
@@ -933,52 +933,52 @@ class TapiWrapper(object):
                 requested_capacity=requested_capacity, latency=requested_latency),
         ]
         if self.wtapi_ledger[virtual_link_uuid]['router_flow_creation'] \
-                and self.wtapi_ledger[virtual_link_uuid]['egress']['conf']['router_ext_ip'] \
+                and self.wtapi_ledger[virtual_link_uuid]['egress']['conf'].get('router_ext_ip') \
                 and self.wtapi_ledger[virtual_link_uuid]['ingress']['type'] == 'endpoint':
             self.wtapi_ledger[virtual_link_uuid]['router_flow_operational'] = True
             router_connectivity_services = [
                 self.engine.generate_cs_from_nap_pair(
-                    ingress_nap, self.wtapi_ledger[virtual_link_uuid]['egress']['conf']['router_ext_ip'],
+                    ingress_nap, self.wtapi_ledger[virtual_link_uuid]['egress']['conf'].get('router_ext_ip'),
                     ingress_sip_uuid, egress_sip_uuid,
                     layer='MPLS', direction='UNIDIRECTIONAL'),
                 self.engine.generate_cs_from_nap_pair(
-                    self.wtapi_ledger[virtual_link_uuid]['egress']['conf']['router_ext_ip'], ingress_nap,
+                    self.wtapi_ledger[virtual_link_uuid]['egress']['conf'].get('router_ext_ip'), ingress_nap,
                     egress_sip_uuid, ingress_sip_uuid,
                     layer='MPLS', direction='UNIDIRECTIONAL'),
                 self.engine.generate_cs_from_nap_pair(
-                    ingress_nap, self.wtapi_ledger[virtual_link_uuid]['egress']['conf']['router_ext_ip'],
+                    ingress_nap, self.wtapi_ledger[virtual_link_uuid]['egress']['conf'].get('router_ext_ip'),
                     ingress_sip_uuid, egress_sip_uuid,
                     layer='MPLS_ARP', direction='UNIDIRECTIONAL'),
                 self.engine.generate_cs_from_nap_pair(
-                    self.wtapi_ledger[virtual_link_uuid]['egress']['conf']['router_ext_ip'], ingress_nap,
+                    self.wtapi_ledger[virtual_link_uuid]['egress']['conf'].get('router_ext_ip'), ingress_nap,
                     egress_sip_uuid, ingress_sip_uuid,
                     layer='MPLS_ARP', direction='UNIDIRECTIONAL'),
             ]
         elif self.wtapi_ledger[virtual_link_uuid]['router_flow_creation'] \
-                and self.wtapi_ledger[virtual_link_uuid]['ingress']['conf']['router_ext_ip'] \
+                and self.wtapi_ledger[virtual_link_uuid]['ingress']['conf'].get('router_ext_ip') \
                 and self.wtapi_ledger[virtual_link_uuid]['egress']['type'] == 'endpoint':
             self.wtapi_ledger[virtual_link_uuid]['router_flow_operational'] = True
             router_connectivity_services = [
             self.engine.generate_cs_from_nap_pair(
-                self.wtapi_ledger[virtual_link_uuid]['ingress']['conf']['router_ext_ip'], egress_nap,
+                self.wtapi_ledger[virtual_link_uuid]['ingress']['conf'].get('router_ext_ip'), egress_nap,
                 ingress_sip_uuid, egress_sip_uuid,
                 layer='MPLS', direction='UNIDIRECTIONAL'),
             self.engine.generate_cs_from_nap_pair(
-                egress_nap, self.wtapi_ledger[virtual_link_uuid]['ingress']['conf']['router_ext_ip'],
+                egress_nap, self.wtapi_ledger[virtual_link_uuid]['ingress']['conf'].get('router_ext_ip'),
                 egress_sip_uuid, ingress_sip_uuid,
                 layer='MPLS', direction='UNIDIRECTIONAL'),
             self.engine.generate_cs_from_nap_pair(
-                self.wtapi_ledger[virtual_link_uuid]['ingress']['conf']['router_ext_ip'], egress_nap,
+                self.wtapi_ledger[virtual_link_uuid]['ingress']['conf'].get('router_ext_ip'), egress_nap,
                 ingress_sip_uuid, egress_sip_uuid,
                 layer='MPLS_ARP', direction='UNIDIRECTIONAL'),
             self.engine.generate_cs_from_nap_pair(
-                egress_nap, self.wtapi_ledger[virtual_link_uuid]['ingress']['conf']['router_ext_ip'],
+                egress_nap, self.wtapi_ledger[virtual_link_uuid]['ingress']['conf'].get('router_ext_ip'),
                 egress_sip_uuid, ingress_sip_uuid,
                 layer='MPLS_ARP', direction='UNIDIRECTIONAL'),
         ]
         elif self.wtapi_ledger[virtual_link_uuid]['router_flow_creation'] \
-                and self.wtapi_ledger[virtual_link_uuid]['ingress']['conf']['router_ext_ip'] \
-                and self.wtapi_ledger[virtual_link_uuid]['egress']['conf']['router_ext_ip']:
+                and self.wtapi_ledger[virtual_link_uuid]['ingress']['conf'].get('router_ext_ip') \
+                and self.wtapi_ledger[virtual_link_uuid]['egress']['conf'].get('router_ext_ip'):
             self.wtapi_ledger[virtual_link_uuid]['router_flow_operational'] = True
             LOG.warning(f'MSCS not implemented yet in the wrapper')
             # RouterA<->RouterB, VNFA<->RouterB RouterA<->VNFB, tests needed before implementing
