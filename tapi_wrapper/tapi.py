@@ -367,23 +367,53 @@ class TapiWrapper(object):
                                           database="vimregistry")
             cursor = connection.cursor()
             LOG.debug(f"Removing {db_endpoints} from vimregistry to avoid duplicates")
-            if db_endpoints:
+            if len(db_endpoints) == 1:
+                query_delete = f"DELETE FROM vim WHERE vendor = 'endpoint' AND uuid in ({db_endpoints[0]})"
+                LOG.debug(f'query_delete: {query_delete}')
+                cursor.execute(query_delete)
+                connection.commit()
+            elif len(db_endpoints) > 1:
                 query_delete = f"DELETE FROM vim WHERE vendor = 'endpoint' AND uuid in {tuple(db_endpoints)}"
                 LOG.debug(f'query_delete: {query_delete}')
                 cursor.execute(query_delete)
                 connection.commit()
             # GET VIM endpoints
-            if sip_names:
+            if len(sip_names) == 1:
+                query_names = f"SELECT uuid FROM vim WHERE vendor = 'endpoint' AND name in ({sip_names[0]})"
+                LOG.debug(f'query_names: {query_names}')
+                cursor.execute(query_names)
+                db_endpoints_by_name = [e[0] for e in cursor.fetchall()]
+                LOG.debug(f"Removing {db_endpoints_by_name} from vimregistry to avoid naming duplicates")
+                if len(db_endpoints_by_name) == 1:
+                    query_delete_by_name = f"DELETE FROM vim WHERE vendor = 'endpoint' AND uuid in ({db_endpoints_by_name[0]})"
+                    LOG.debug(f'query_delete_by_name: {query_delete_by_name}')
+                    cursor.execute(query_delete_by_name)
+                    connection.commit()
+                    db_endpoints.append(db_endpoints_by_name)
+                elif len(db_endpoints_by_name) > 1:
+                    query_delete_by_name = f"DELETE FROM vim WHERE vendor = 'endpoint' AND uuid in {tuple(db_endpoints_by_name)}"
+                    LOG.debug(f'query_delete_by_name: {query_delete_by_name}')
+                    cursor.execute(query_delete_by_name)
+                    connection.commit()
+                    db_endpoints.append(db_endpoints_by_name)
+            elif len(sip_names) > 1:
                 query_names = f"SELECT uuid FROM vim WHERE vendor = 'endpoint' AND name in {tuple(sip_names)}"
                 LOG.debug(f'query_names: {query_names}')
                 cursor.execute(query_names)
                 db_endpoints_by_name = [e[0] for e in cursor.fetchall()]
                 LOG.debug(f"Removing {db_endpoints_by_name} from vimregistry to avoid naming duplicates")
-                query_delete_by_name = f"DELETE FROM vim WHERE vendor = 'endpoint' AND uuid in {tuple(db_endpoints_by_name)}"
-                LOG.debug(f'query_delete_by_name: {query_delete_by_name}')
-                cursor.execute(query_delete_by_name)
-                connection.commit()
-                db_endpoints.append(db_endpoints_by_name)
+                if len(db_endpoints_by_name) == 1:
+                    query_delete_by_name = f"DELETE FROM vim WHERE vendor = 'endpoint' AND uuid in ({db_endpoints_by_name[0]})"
+                    LOG.debug(f'query_delete_by_name: {query_delete_by_name}')
+                    cursor.execute(query_delete_by_name)
+                    connection.commit()
+                    db_endpoints.append(db_endpoints_by_name)
+                elif len(db_endpoints_by_name) > 1:
+                    query_delete_by_name = f"DELETE FROM vim WHERE vendor = 'endpoint' AND uuid in {tuple(db_endpoints_by_name)}"
+                    LOG.debug(f'query_delete_by_name: {query_delete_by_name}')
+                    cursor.execute(query_delete_by_name)
+                    connection.commit()
+                    db_endpoints.append(db_endpoints_by_name)
             return db_endpoints
         except (Exception, psycopg2.Error) as error:
             LOG.error(error)
@@ -410,10 +440,11 @@ class TapiWrapper(object):
             cursor.execute(query)
             db_endpoints = cursor.fetchall()
             LOG.debug(f"Remove {db_endpoints} from vimregistry to avoid duplicates")
-            query_delete = f"DELETE FROM attached_vim WHERE wim_uuid = '{wim_uuid}'"
-            LOG.debug(f'query_delete: {query_delete}')
-            cursor.execute(query_delete)
-            connection.commit()
+            if wim_uuid:
+                query_delete = f"DELETE FROM attached_vim WHERE wim_uuid = '{wim_uuid}'"
+                LOG.debug(f'query_delete: {query_delete}')
+                cursor.execute(query_delete)
+                connection.commit()
             return db_endpoints
         except (Exception, psycopg2.Error) as error:
             LOG.error(error)
