@@ -1271,10 +1271,10 @@ class TapiWrapper(object):
         def send_error_response(error, virtual_link_uuid):
 
             response = {
-                'message': error,
+                'message': str(error),
                 'request_status': 'ERROR'
             }
-            msg = ' Response on create request: ' + str(response)
+            msg = 'Response on create request: ' + str(response)
             LOG.error(f'Parsing error: {msg}')
             self.manoconn.notify(properties.reply_to,
                                  json.dumps(response),
@@ -1392,7 +1392,7 @@ class TapiWrapper(object):
         def send_error_response(error, virtual_link_uuid):
 
             response = {
-                'message': error,
+                'message': str(error),
                 'request_status': 'ERROR'
             }
             msg = ' Response on remove request: ' + str(response)
@@ -1477,7 +1477,7 @@ class TapiWrapper(object):
         def send_error_response(error, virtual_link_uuid):
 
             response = {
-                'message': error,
+                'message': str(error),
                 'request_status': 'ERROR'
             }
             msg = ' Response on create request: ' + str(response)
