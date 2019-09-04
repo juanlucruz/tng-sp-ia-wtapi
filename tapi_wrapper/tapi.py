@@ -1313,13 +1313,13 @@ class TapiWrapper(object):
             send_error_response(error, None)
             return
 
-        elif not message['ingress'] or message['ingress'] == '{}':
+        elif not message['ingress'] or not type(message['ingress']) is dict:
             error = f'Ingress ({message["ingress"]}) cannot be empty or it is bad formatted'
             LOG.error(error)
             send_error_response(error, None)
             return
 
-        elif not message['egress'] or message['egress'] == '{}':
+        elif not message['egress'] or not type(message['egress']) is dict:
             error = f'Egress ({message["egress"]}) cannot be empty or it is bad formatted'
             LOG.error(error)
             send_error_response(error, None)
